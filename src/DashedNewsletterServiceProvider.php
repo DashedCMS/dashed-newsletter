@@ -22,14 +22,21 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('dashed-newsletter')
+            // De tijdstempels in deze namen zijn geen sier en de volgorde van
+            // deze lijst is niet wat telt. Laravel's migrator sorteert alle
+            // geregistreerde migraties op bestandsnaam, dus zonder voorvoegsel
+            // draait consents vóór subscribers en klapt de foreign key eruit
+            // met "Failed to open the referenced table". Op SQLite valt dat niet
+            // op: die accepteert een verwijzing naar een tabel die nog niet
+            // bestaat. Nummers dus in afhankelijkheidsvolgorde laten staan.
             ->hasMigrations([
-                'create_newsletter_lists_table',
-                'create_newsletter_subscribers_table',
-                'create_newsletter_fields_table',
-                'create_newsletter_field_values_table',
-                'create_newsletter_subscriber_events_table',
-                'create_newsletter_consents_table',
-                'create_newsletter_segments_table',
+                '2026_08_10_000001_create_newsletter_lists_table',
+                '2026_08_10_000002_create_newsletter_subscribers_table',
+                '2026_08_10_000003_create_newsletter_fields_table',
+                '2026_08_10_000004_create_newsletter_field_values_table',
+                '2026_08_10_000005_create_newsletter_subscriber_events_table',
+                '2026_08_10_000006_create_newsletter_consents_table',
+                '2026_08_10_000007_create_newsletter_segments_table',
             ])
             ->runsMigrations();
     }
