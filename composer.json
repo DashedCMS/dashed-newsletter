@@ -1,0 +1,36 @@
+{
+    "name": "dashed/dashed-newsletter",
+    "description": "Nieuwsbrieflijsten, contacten en segmentatie voor Dashed CMS",
+    "keywords": ["Dashed", "laravel", "dashed-newsletter", "newsletter"],
+    "homepage": "https://github.com/DashedCMS/dashed-newsletter",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Robin van Maasakker",
+            "email": "robin@dashed.nl",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "dashed/dashed-core": "*",
+        "spatie/laravel-package-tools": "^1.16"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dashed\\DashedNewsletter\\": "src"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Dashed\\DashedNewsletter\\DashedNewsletterServiceProvider"
+            ],
+            "aliases": {
+                "Newsletter": "Dashed\\DashedNewsletter\\Facades\\Newsletter"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
