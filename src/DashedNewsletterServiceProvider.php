@@ -38,6 +38,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 '2026_08_10_000005_create_newsletter_subscriber_events_table',
                 '2026_08_10_000006_create_newsletter_consents_table',
                 '2026_08_10_000007_create_newsletter_segments_table',
+                '2026_08_11_000001_make_newsletter_list_from_email_nullable',
             ])
             ->runsMigrations();
     }

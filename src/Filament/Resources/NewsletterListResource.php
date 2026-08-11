@@ -17,6 +17,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\EditNewsletterList;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\ListNewsletterLists;
@@ -62,7 +63,11 @@ class NewsletterListResource extends Resource
                     ->label('Taal')
                     ->options(['nl' => 'Nederlands', 'en' => 'Engels', 'de' => 'Duits']),
                 TextInput::make('from_name')->label('Afzendernaam')->maxLength(255),
-                TextInput::make('from_email')->label('Afzenderadres')->email()->required(),
+                TextInput::make('from_email')
+                    ->label('Afzenderadres')
+                    ->email()
+                    ->placeholder(fn (): ?string => Customsetting::get('site_from_email', Sites::getActive()) ?: config('mail.from.address'))
+                    ->helperText('Laat leeg om het adres uit de algemene instellingen te gebruiken.'),
                 TextInput::make('reply_to_email')->label('Antwoordadres')->email(),
                 Toggle::make('notify_on_subscribe')->label('Melding bij aanmelding'),
                 Toggle::make('notify_on_unsubscribe')->label('Melding bij afmelding'),
@@ -79,7 +84,14 @@ class NewsletterListResource extends Resource
                     ->label('Actief op site')
                     ->sortable()
                     ->hidden(! (Sites::getAmountOfSites() > 1)),
-                TextColumn::make('from_email')->label('Afzender')->searchable(),
+                // De kolom toont het adres dat werkelijk gebruikt wordt, ook als
+                // de lijst zelf leeg is. Een leeg vakje zou de indruk wekken dat
+                // er geen afzender is.
+                TextColumn::make('from_email')
+                    ->label('Afzender')
+                    ->searchable()
+                    ->state(fn (NewsletterList $record): ?string => $record->effectiveFromEmail())
+                    ->description(fn (NewsletterList $record): ?string => $record->from_email ? null : 'uit de algemene instellingen'),
                 TextColumn::make('subscribers_count')
                     ->label('Contacten')
                     ->counts('subscribers')

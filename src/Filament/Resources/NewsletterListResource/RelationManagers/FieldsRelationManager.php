@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\RelationManagers;
 
 use Filament\Tables\Table;
+use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use Filament\Actions\EditAction;
 use Filament\Actions\CreateAction;
@@ -17,6 +18,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Dashed\DashedNewsletter\Models\NewsletterField;
 use Dashed\DashedNewsletter\Models\NewsletterFieldValue;
@@ -27,6 +29,25 @@ class FieldsRelationManager extends RelationManager
     protected static string $relationship = 'fields';
 
     protected static ?string $title = 'Velden';
+
+    /**
+     * De velden waar vrijwel elke nieuwsbrief mee begint.
+     *
+     * Het e-mailadres staat er bewust niet bij. Dat is bij ons geen zelf
+     * gedefinieerd veld maar een kolom op het contact, met een unieke sleutel
+     * per lijst. Zou je het hier als veld aanmaken, dan komt er een tweede adres
+     * naast te staan dat door geen enkele aanmeldweg wordt bijgewerkt, en dan
+     * segmenteer je later op het verkeerde.
+     *
+     * @return array<int, array{key: string, label: string}>
+     */
+    private static function defaultFields(): array
+    {
+        return [
+            ['key' => 'voornaam', 'label' => 'Voornaam'],
+            ['key' => 'achternaam', 'label' => 'Achternaam'],
+        ];
+    }
 
     private static function typeOptions(): array
     {
@@ -103,6 +124,34 @@ class FieldsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make(),
+                // Alleen zichtbaar zolang de lijst nog leeg is. Daarna zou de
+                // knop of niets doen of iets terugzetten wat iemand net bewust
+                // heeft weggehaald.
+                Action::make('createDefaultFields')
+                    ->label('Standaardvelden aanmaken')
+                    ->icon('heroicon-o-sparkles')
+                    ->visible(fn (): bool => $this->getOwnerRecord()->fields()->doesntExist())
+                    ->requiresConfirmation()
+                    ->modalHeading('Standaardvelden aanmaken')
+                    ->modalDescription('Dit maakt de velden Voornaam en Achternaam aan. Het e-mailadres staat al op het contact zelf en is geen apart veld.')
+                    ->modalSubmitActionLabel('Aanmaken')
+                    ->action(function (): void {
+                        foreach (self::defaultFields() as $sort => $field) {
+                            $this->getOwnerRecord()->fields()->firstOrCreate(
+                                ['key' => $field['key']],
+                                [
+                                    'label' => $field['label'],
+                                    'type' => NewsletterField::TYPE_TEXT,
+                                    'sort' => $sort,
+                                ]
+                            );
+                        }
+
+                        Notification::make()
+                            ->title('Standaardvelden aangemaakt')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->recordActions([
                 EditAction::make(),

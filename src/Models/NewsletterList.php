@@ -6,6 +6,7 @@ namespace Dashed\DashedNewsletter\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Dashed\DashedCore\Models\Customsetting;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NewsletterList extends Model
@@ -23,6 +24,19 @@ class NewsletterList extends Model
     public function scopeForSite(Builder $query, ?string $siteId): Builder
     {
         return $query->where('site_id', $siteId);
+    }
+
+    /**
+     * Het adres waarmee deze lijst verstuurt. Een lijst hoeft er geen eigen te
+     * hebben: is hij leeg, dan geldt het adres uit de algemene instellingen van
+     * de site, en anders dat uit de mailconfiguratie. Zo hoeft een redacteur bij
+     * een nieuwe lijst niets in te vullen wat elders al klopt.
+     */
+    public function effectiveFromEmail(): ?string
+    {
+        return $this->from_email
+            ?: Customsetting::get('site_from_email', $this->site_id)
+            ?: config('mail.from.address');
     }
 
     public function subscribers(): HasMany
