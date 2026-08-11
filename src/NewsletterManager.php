@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter;
 
 use Illuminate\Support\Facades\DB;
+use Dashed\DashedNewsletter\Import\ImportResult;
 use Dashed\DashedNewsletter\Import\ImportedContact;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterConsent;
@@ -171,6 +172,36 @@ class NewsletterManager
 
             return $subscriber;
         });
+    }
+
+    /**
+     * Neemt een reeks contacten over. Eén transactie per contact, niet per
+     * ronde: bij duizenden contacten mag één rot adres de hele overname niet
+     * omgooien, en een half afgebroken ronde is beter dan geen ronde.
+     *
+     * @param iterable<ImportedContact> $contacts
+     */
+    public function importMany(NewsletterList $list, iterable $contacts): ImportResult
+    {
+        $result = new ImportResult();
+
+        foreach ($contacts as $contact) {
+            $bestond = NewsletterSubscriber::where('newsletter_list_id', $list->id)
+                ->where('email', mb_strtolower(trim($contact->email)))
+                ->exists();
+
+            try {
+                $this->import($list, $contact);
+            } catch (\InvalidArgumentException $e) {
+                $result->skip($contact->email, $e->getMessage());
+
+                continue;
+            }
+
+            $bestond ? $result->updated++ : $result->created++;
+        }
+
+        return $result;
     }
 
     /**
