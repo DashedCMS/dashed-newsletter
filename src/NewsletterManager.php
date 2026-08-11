@@ -127,6 +127,14 @@ class NewsletterManager
             $isNieuw = ! $subscriber->exists;
             $vorigeStatus = $subscriber->status;
 
+            // Een overname die van niet-actief naar actief gaat is een echte
+            // heractivering, net als changeStatus() dat behandelt. Een nieuw
+            // contact telt niet mee: dat is geen heractivering maar een eerste
+            // overname.
+            $wordtGeheractiveerd = ! $isNieuw
+                && $vorigeStatus !== NewsletterSubscriber::STATUS_ACTIVE
+                && $contact->status === NewsletterSubscriber::STATUS_ACTIVE;
+
             $subscriber->status = $contact->status;
             $subscriber->source = $contact->source ?? $subscriber->source;
 
@@ -136,6 +144,12 @@ class NewsletterManager
 
             if ($contact->confirmedAt) {
                 $subscriber->confirmed_at = $contact->confirmedAt;
+            }
+
+            // Anders staat er een actief contact met een gevulde
+            // unsubscribed_at ernaast, precies wat changeStatus() ook voorkomt.
+            if ($contact->status === NewsletterSubscriber::STATUS_ACTIVE) {
+                $subscriber->unsubscribed_at = null;
             }
 
             $subscriber->save();
@@ -153,6 +167,10 @@ class NewsletterManager
             }
 
             $this->recordImportedConsent($subscriber, $contact);
+
+            if ($wordtGeheractiveerd) {
+                $this->recordReactivatedConsent($subscriber, $contact);
+            }
 
             // Alleen een gebeurtenis als er werkelijk iets veranderde. Bij een
             // herhaalde overname van 2445 contacten zou de tijdlijn anders elke
@@ -209,10 +227,15 @@ class NewsletterManager
      * dat is wat er werkelijk gebeurd is. Een tweede overname van hetzelfde
      * feit voegt niets toe, dus schrijven we alleen als er nog geen regel met
      * diezelfde datum staat.
+     *
+     * Geeft de bron geen datum, dan valt dit terug op subscribed_at van het
+     * contact zelf (altijd gevuld door het model) en pas als laatste redmiddel
+     * op now(). Zonder die tussenstap levert elke ronde een nieuwe datum en
+     * dus een nieuwe bewijsregel op, terwijl er die dag niemand toestemming gaf.
      */
     private function recordImportedConsent(NewsletterSubscriber $subscriber, ImportedContact $contact): void
     {
-        $givenAt = $contact->subscribedAt ?? now();
+        $givenAt = $contact->subscribedAt ?? $subscriber->subscribed_at ?? now();
 
         if ($subscriber->consents()->where('given_at', $givenAt)->exists()) {
             return;
@@ -224,6 +247,25 @@ class NewsletterManager
             'ip' => $contact->ip,
             'source' => $contact->source,
             'consent_text' => $contact->consentText,
+        ]);
+    }
+
+    /**
+     * Extra bewijsregel bij een heractivering via een overname. Het
+     * oorspronkelijke bewijs (recordImportedConsent) dekt de heractivering
+     * niet, dus komt dit erbij in plaats van in de plaats daarvan: bewijs
+     * wordt aangevuld, nooit vervangen.
+     */
+    private function recordReactivatedConsent(NewsletterSubscriber $subscriber, ImportedContact $contact): void
+    {
+        $bron = $contact->source ?? 'de bron';
+
+        NewsletterConsent::create([
+            'newsletter_subscriber_id' => $subscriber->id,
+            'given_at' => now(),
+            'ip' => $contact->ip,
+            'source' => $contact->source,
+            'consent_text' => 'Op grond van ' . $bron . ' opnieuw actief gezet op ' . now()->format('d-m-Y') . '.',
         ]);
     }
 
