@@ -63,6 +63,10 @@ class SubscribersRelationManager extends RelationManager
             // Zelfde veld als op het losse bewerkscherm: heractiveren vraagt om
             // een nieuw toestemmingsbewijs, ongeacht via welk scherm het gaat.
             NewsletterSubscriberResource::reactivationConsentField(),
+
+            // En de velden van deze lijst, zodat je ze hier kunt zien en
+            // wijzigen in plaats van alleen in de tabel te kunnen aflezen.
+            ...NewsletterSubscriberResource::fieldComponents($this->getOwnerRecord()),
         ]);
     }
 
@@ -129,12 +133,25 @@ class SubscribersRelationManager extends RelationManager
                             ->label('Toestemmingstekst')
                             ->rows(2)
                             ->helperText('Wat als bewijs van toestemming bewaard wordt, bijvoorbeeld wat de beheerder de klant heeft horen of zien bevestigen. Laat je het leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip en bron, alleen zonder tekst erbij.'),
+                        // De velden van deze lijst zaten hier niet in, dus een
+                        // handmatig toegevoegd contact begon altijd zonder
+                        // voornaam en moest daarna alsnog bewerkt worden.
+                        ...NewsletterSubscriberResource::fieldComponents($this->getOwnerRecord()),
                     ])
                     ->using(function (array $data): NewsletterSubscriber {
+                        $fields = [];
+
+                        foreach ($data as $key => $value) {
+                            if (str_starts_with($key, 'field_')) {
+                                $fields[substr($key, 6)] = $value;
+                            }
+                        }
+
                         try {
                             return Newsletter::subscribe(
                                 email: $data['email'],
                                 list: $this->getOwnerRecord(),
+                                fields: $fields,
                                 source: 'handmatig',
                                 consentText: $data['consent_text'],
                             );
@@ -151,11 +168,14 @@ class SubscribersRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
+                    // Veldwaarden zijn geen kolom op het contact, dus die komen
+                    // er met de hand bij voordat het formulier gevuld wordt.
+                    ->mutateRecordDataUsing(fn (array $data, NewsletterSubscriber $record): array => NewsletterSubscriberResource::withFieldValues($record, $data))
                     // Alles wat er bij een bewerking komt kijken (e-mailslot,
                     // bron-gebeurtenis, statusovergang met tijdlijn,
-                    // unsubscribed_at en toestemmingsbewijs) staat in
-                    // Newsletter::updateFromAdmin(), zodat dit scherm en
-                    // EditNewsletterSubscriber niet uit elkaar kunnen lopen.
+                    // unsubscribed_at, toestemmingsbewijs en de veldwaarden)
+                    // staat in Newsletter::updateFromAdmin(), zodat dit scherm
+                    // en EditNewsletterSubscriber niet uit elkaar kunnen lopen.
                     ->using(fn (NewsletterSubscriber $record, array $data): NewsletterSubscriber => Newsletter::updateFromAdmin($record, $data)),
                 DeleteAction::make(),
             ])

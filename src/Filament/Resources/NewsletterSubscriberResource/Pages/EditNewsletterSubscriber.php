@@ -21,6 +21,19 @@ class EditNewsletterSubscriber extends EditRecord
         ];
     }
 
+    /**
+     * De veldwaarden zijn geen kolom op het contact, dus die moeten er met de
+     * hand bij voordat het formulier gevuld wordt. Zonder dit staan de velden
+     * er wel maar zijn ze leeg, wat erger is dan ze niet tonen.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return NewsletterSubscriberResource::withFieldValues($this->getRecord(), $data);
+    }
+
     // Alles wat er bij een bewerking komt kijken (e-mailslot, bron-gebeurtenis,
     // statusovergang met tijdlijn, unsubscribed_at en toestemmingsbewijs) staat
     // in Newsletter::updateFromAdmin(). Deze logica stond eerder letterlijk

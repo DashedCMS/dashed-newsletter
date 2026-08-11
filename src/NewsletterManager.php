@@ -416,6 +416,18 @@ class NewsletterManager
         $consentText = $data['reactivation_consent_text'] ?? null;
         unset($data['reactivation_consent_text']);
 
+        // De zelf gedefinieerde velden komen als field_<sleutel> uit het
+        // formulier. Ze zijn geen kolom op het contact, dus ze moeten er hier
+        // uit voordat fill() ze als attribuut probeert te zetten.
+        $fieldValues = [];
+
+        foreach ($data as $key => $value) {
+            if (str_starts_with($key, 'field_')) {
+                $fieldValues[substr($key, 6)] = $value;
+                unset($data[$key]);
+            }
+        }
+
         // Een leeggemaakt tekstveld levert '' op, geen null. Zonder deze
         // normalisatie krijgt een contact met source=null een gebeurtenis
         // "gewijzigd van niets naar niets", en komt er '' in de kolom te staan
@@ -435,6 +447,18 @@ class NewsletterManager
             && (filled($subscriber->source) ? $subscriber->source : null) !== $previousSource;
 
         $subscriber->save();
+
+        if ($fieldValues) {
+            $definitions = $subscriber->list?->fields()->get()->keyBy('key');
+
+            foreach ($fieldValues as $key => $value) {
+                $definition = $definitions?->get($key);
+
+                if ($definition) {
+                    NewsletterFieldValue::writeValue($subscriber, $definition, $value);
+                }
+            }
+        }
 
         if ($sourceChanged) {
             NewsletterSubscriberEvent::create([

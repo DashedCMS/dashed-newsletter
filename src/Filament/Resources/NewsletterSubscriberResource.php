@@ -13,14 +13,18 @@ use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
+use Dashed\DashedNewsletter\Models\NewsletterList;
 use Filament\Infolists\Components\RepeatableEntry;
+use Dashed\DashedNewsletter\Models\NewsletterField;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriberEvent;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterSubscriberResource\Pages\EditNewsletterSubscriber;
@@ -82,6 +86,57 @@ class NewsletterSubscriberResource extends Resource
             ->helperText('Dit contact was uitgeschreven. Leg vast waarom het weer actief mag worden, bijvoorbeeld wat de klant je heeft laten weten. De tekst wordt letterlijk als nieuw toestemmingsbewijs opgeslagen.');
     }
 
+    /**
+     * De invoervelden voor de zelf gedefinieerde velden van een lijst.
+     *
+     * Ze heten field_<sleutel> zodat ze niet botsen met een kolom op het
+     * contact, en NewsletterManager::updateFromAdmin() haalt ze er op dat
+     * voorvoegsel weer uit. Zo staat het wegschrijven op één plek en doen het
+     * bewerkscherm van een lijst en het losse bewerkscherm hetzelfde.
+     *
+     * @return array<int, mixed>
+     */
+    public static function fieldComponents(?NewsletterList $list): array
+    {
+        if (! $list) {
+            return [];
+        }
+
+        return $list->fields->map(function (NewsletterField $field) {
+            $name = 'field_' . $field->key;
+
+            $component = match ($field->type) {
+                NewsletterField::TYPE_NUMBER => TextInput::make($name)->numeric(),
+                NewsletterField::TYPE_DATE => DatePicker::make($name),
+                NewsletterField::TYPE_SELECT => Select::make($name)
+                    ->options(collect($field->options ?? [])->mapWithKeys(fn ($o) => [$o => $o])->all()),
+                NewsletterField::TYPE_CHECKBOX => Toggle::make($name),
+                default => TextInput::make($name)->maxLength(255),
+            };
+
+            return $component
+                ->label($field->label)
+                ->required((bool) $field->required);
+        })->all();
+    }
+
+    /**
+     * Vult de bestaande veldwaarden bij de formuliergegevens.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public static function withFieldValues(NewsletterSubscriber $record, array $data): array
+    {
+        foreach ($record->fieldValues()->with('field')->get() as $value) {
+            if ($value->field) {
+                $data['field_' . $value->field->key] = $value->value;
+            }
+        }
+
+        return $data;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -100,6 +155,14 @@ class NewsletterSubscriberResource extends Resource
                     ->maxLength(255),
                 self::reactivationConsentField(),
             ])->columns(2),
+
+            // De velden van de lijst waar dit contact op staat. Zonder deze
+            // sectie kon je ze op dit scherm niet zien en niet wijzigen.
+            Section::make('Velden')
+                ->columnSpanFull()
+                ->visible(fn (?NewsletterSubscriber $record): bool => ($record?->list?->fields()->exists()) ?? false)
+                ->schema(fn (?NewsletterSubscriber $record): array => self::fieldComponents($record?->list))
+                ->columns(2),
         ]);
     }
 
