@@ -32,5 +32,6 @@ final readonly class ImportedContact
         public ?string $source = null,
         public ?string $origin = null,
         public ?string $consentText = null,
-    ) {}
+    ) {
+    }
 }
