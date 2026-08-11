@@ -7,8 +7,8 @@ namespace Dashed\DashedNewsletter;
 use Filament\Panel;
 use Filament\Contracts\Plugin;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource;
-use Dashed\DashedNewsletter\Filament\Pages\Settings\DashedNewsletterSettingsPage;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterSubscriberResource;
+use Dashed\DashedNewsletter\Filament\Pages\Settings\DashedNewsletterSettingsPage;
 
 class DashedNewsletterPlugin implements Plugin
 {
