@@ -13,8 +13,10 @@ use Dashed\DashedNewsletter\Import\ImportedContact;
 use Dashed\DashedNewsletter\Models\NewsletterConsent;
 use Dashed\DashedNewsletter\Models\NewsletterFieldValue;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
+use Dashed\DashedNewsletter\Events\NewsletterSubscribedEvent;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriberEvent;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
+use Dashed\DashedNewsletter\Events\NewsletterUnsubscribedEvent;
 use Dashed\DashedNewsletter\Segments\Contracts\SegmentCondition;
 
 class NewsletterManager
@@ -99,14 +101,21 @@ class NewsletterManager
             throw new \InvalidArgumentException('Ongeldig e-mailadres.');
         }
 
+        $isNieuweAanmelding = false;
+
         // Contact, veldwaarden, event en toestemming horen bij elkaar: gaat er
         // halverwege iets mis, dan mag er geen actief contact zonder
         // toestemmingsbewijs blijven staan.
-        return DB::transaction(function () use ($email, $list, $fields, $source, $consentText, $ip): NewsletterSubscriber {
+        $subscriber = DB::transaction(function () use ($email, $list, $fields, $source, $consentText, $ip, &$isNieuweAanmelding): NewsletterSubscriber {
             $subscriber = NewsletterSubscriber::firstOrNew([
                 'newsletter_list_id' => $list->id,
                 'email' => $email,
             ]);
+
+            // Een bestaand actief contact dat zich nog eens aanmeldt is geen
+            // nieuwe aanmelding; daar hoort geen melding bij.
+            $isNieuweAanmelding = ! $subscriber->exists
+                || $subscriber->status !== NewsletterSubscriber::STATUS_ACTIVE;
 
             $subscriber->status = NewsletterSubscriber::STATUS_ACTIVE;
             $subscriber->unsubscribed_at = null;
@@ -135,6 +144,14 @@ class NewsletterManager
 
             return $subscriber;
         });
+
+        // Na de transactie, niet erin: een luisteraar die een melding verstuurt
+        // hoort niet mee te draaien in de transactie die het contact wegschrijft.
+        if ($isNieuweAanmelding) {
+            NewsletterSubscribedEvent::dispatch($subscriber);
+        }
+
+        return $subscriber;
     }
 
     /**
@@ -387,6 +404,16 @@ class NewsletterManager
                 'payload' => ['from' => $previousStatus, 'to' => $status],
             ]);
         });
+
+        // Na de transactie, en alleen bij een echte overgang: hierboven is al
+        // afgevangen dat een gelijkblijvende status niets oplevert.
+        if ($status === NewsletterSubscriber::STATUS_ACTIVE) {
+            NewsletterSubscribedEvent::dispatch($subscriber);
+        }
+
+        if ($status === NewsletterSubscriber::STATUS_UNSUBSCRIBED) {
+            NewsletterUnsubscribedEvent::dispatch($subscriber);
+        }
 
         return true;
     }
