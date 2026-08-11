@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter;
 
 use Illuminate\Support\Facades\DB;
+use Dashed\DashedNewsletter\Import\ImportedContact;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterConsent;
 use Dashed\DashedNewsletter\Models\NewsletterFieldValue;
@@ -83,6 +84,116 @@ class NewsletterManager
 
             return $subscriber;
         });
+    }
+
+    /**
+     * Neemt een contact over dat al ergens anders op een lijst stond.
+     *
+     * Bewust een tweede weg naast subscribe(). Die betekent "iemand meldt zich
+     * nu aan" en zet daarom altijd op actief; hier komt de status uit de bron.
+     * Zou een overname door subscribe() lopen, dan wordt iedereen die zich ooit
+     * heeft uitgeschreven stilzwijgend weer actief, en dat merk je pas als er
+     * post uitgaat.
+     */
+    public function import(NewsletterList $list, ImportedContact $contact): NewsletterSubscriber
+    {
+        $email = mb_strtolower(trim($contact->email));
+
+        // Vóór de transactie, net als bij subscribe(): een ongeldig adres mag
+        // geen half weggeschreven contact achterlaten.
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException('Ongeldig e-mailadres: ' . $contact->email);
+        }
+
+        $statuses = [
+            NewsletterSubscriber::STATUS_ACTIVE,
+            NewsletterSubscriber::STATUS_UNSUBSCRIBED,
+            NewsletterSubscriber::STATUS_CLEANED,
+        ];
+
+        // Een onbekende status hard weigeren. Stil terugvallen op actief is
+        // precies de fout die deze hele ingang moet voorkomen.
+        if (! in_array($contact->status, $statuses, true)) {
+            throw new \InvalidArgumentException('Onbekende status: ' . $contact->status);
+        }
+
+        return DB::transaction(function () use ($list, $contact, $email): NewsletterSubscriber {
+            $subscriber = NewsletterSubscriber::firstOrNew([
+                'newsletter_list_id' => $list->id,
+                'email' => $email,
+            ]);
+
+            $isNieuw = ! $subscriber->exists;
+            $vorigeStatus = $subscriber->status;
+
+            $subscriber->status = $contact->status;
+            $subscriber->source = $contact->source ?? $subscriber->source;
+
+            if ($contact->subscribedAt) {
+                $subscriber->subscribed_at = $contact->subscribedAt;
+            }
+
+            if ($contact->confirmedAt) {
+                $subscriber->confirmed_at = $contact->confirmedAt;
+            }
+
+            $subscriber->save();
+
+            $definitions = $list->fields()->get()->keyBy('key');
+
+            foreach ($contact->fields as $key => $value) {
+                $definition = $definitions->get($key);
+
+                if (! $definition) {
+                    continue;
+                }
+
+                NewsletterFieldValue::writeValue($subscriber, $definition, $value);
+            }
+
+            $this->recordImportedConsent($subscriber, $contact);
+
+            // Alleen een gebeurtenis als er werkelijk iets veranderde. Bij een
+            // herhaalde overname van 2445 contacten zou de tijdlijn anders elke
+            // ronde volstromen met regels die niets vertellen.
+            if ($isNieuw || $vorigeStatus !== $subscriber->status) {
+                NewsletterSubscriberEvent::create([
+                    'newsletter_subscriber_id' => $subscriber->id,
+                    'type' => NewsletterSubscriberEvent::TYPE_IMPORTED,
+                    'payload' => [
+                        'source' => $contact->source,
+                        'origin' => $contact->origin,
+                        'from' => $vorigeStatus,
+                        'to' => $subscriber->status,
+                    ],
+                ]);
+            }
+
+            return $subscriber;
+        });
+    }
+
+    /**
+     * Het bewijs draagt de oorspronkelijke aanmelddatum en niet vandaag, want
+     * dat is wat er werkelijk gebeurd is. Een tweede overname van hetzelfde
+     * feit voegt niets toe, dus schrijven we alleen als er nog geen regel met
+     * diezelfde datum staat.
+     */
+    private function recordImportedConsent(NewsletterSubscriber $subscriber, ImportedContact $contact): void
+    {
+        $givenAt = $contact->subscribedAt ?? now();
+
+        if ($subscriber->consents()->where('given_at', $givenAt)->exists()) {
+            return;
+        }
+
+        NewsletterConsent::create([
+            'newsletter_subscriber_id' => $subscriber->id,
+            'given_at' => $givenAt,
+            'ip' => $contact->ip,
+            'source' => $contact->source,
+            'consent_text' => $contact->consentText,
+        ]);
     }
 
     /**
