@@ -86,9 +86,8 @@ class NewsletterListAPI
                 ->columnSpanFull(),
             Textarea::make('consent_text')
                 ->label('Toestemmingstekst')
-                ->helperText('De tekst die naast het vinkje staat. Deze wordt letterlijk bewaard als bewijs.')
-                ->rows(2)
-                ->required(),
+                ->helperText('De tekst die naast het vinkje staat, letterlijk bewaard als bewijs. Laat je hem leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip, IP en bron, alleen zonder tekst erbij.')
+                ->rows(2),
         ];
     }
 

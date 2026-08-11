@@ -102,9 +102,8 @@ class SubscribersRelationManager extends RelationManager
                             ->maxLength(255),
                         Textarea::make('consent_text')
                             ->label('Toestemmingstekst')
-                            ->required()
                             ->rows(2)
-                            ->helperText('De tekst die als bewijs van toestemming bewaard wordt, bijvoorbeeld wat de beheerder de klant heeft horen of zien bevestigen. Wordt letterlijk opgeslagen.'),
+                            ->helperText('Wat als bewijs van toestemming bewaard wordt, bijvoorbeeld wat de beheerder de klant heeft horen of zien bevestigen. Laat je het leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip en bron, alleen zonder tekst erbij.'),
                     ])
                     ->using(function (array $data): NewsletterSubscriber {
                         try {
