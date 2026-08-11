@@ -7,6 +7,7 @@ namespace Dashed\DashedNewsletter;
 use Filament\Panel;
 use Filament\Contracts\Plugin;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource;
+use Dashed\DashedNewsletter\Filament\Pages\Settings\DashedNewsletterSettingsPage;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterSubscriberResource;
 
 class DashedNewsletterPlugin implements Plugin
@@ -22,6 +23,12 @@ class DashedNewsletterPlugin implements Plugin
             ->resources([
                 NewsletterListResource::class,
                 NewsletterSubscriberResource::class,
+            ])
+            // Zonder deze regel bestaat de route van de instellingenpagina niet,
+            // ook al staat hij wel in het instellingenoverzicht. Het overzicht
+            // en het paneel zijn twee losse registraties.
+            ->pages([
+                DashedNewsletterSettingsPage::class,
             ]);
     }
 
