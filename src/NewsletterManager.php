@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter;
 
 use Illuminate\Support\Facades\DB;
+use Dashed\DashedCore\Classes\Sites;
+use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Import\ImportResult;
-use Dashed\DashedNewsletter\Import\ImportedContact;
 use Dashed\DashedNewsletter\Models\NewsletterList;
+use Dashed\DashedNewsletter\Import\ImportedContact;
 use Dashed\DashedNewsletter\Models\NewsletterConsent;
 use Dashed\DashedNewsletter\Models\NewsletterFieldValue;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
@@ -28,6 +30,54 @@ class NewsletterManager
     public function segmentConditions(): array
     {
         return app(SegmentConditionRegistry::class)->all();
+    }
+
+    /** @var array<int, callable> */
+    private array $settingsActions = [];
+
+    /**
+     * Een knop aanmelden voor de instellingenpagina van de nieuwsbrief.
+     *
+     * Zelfde gedachte als registerSegmentCondition(): het nieuwsbriefpakket
+     * hoort niet te weten welke koppelingen er bestaan. Het overnemen van
+     * contacten uit Laposta staat hier omdat dashed-laposta zich aanmeldt, niet
+     * omdat deze pagina van Laposta weet.
+     *
+     * De fabriek krijgt het site-id, want een knop hoort bij een site en de
+     * naam van een Filament-actie moet uniek zijn.
+     *
+     * @param callable(string): \Filament\Actions\Action $factory
+     */
+    public function registerSettingsAction(callable $factory): self
+    {
+        $this->settingsActions[] = $factory;
+
+        return $this;
+    }
+
+    /** @return array<int, \Filament\Actions\Action> */
+    public function settingsActions(string $siteId): array
+    {
+        return array_map(fn (callable $factory) => $factory($siteId), $this->settingsActions);
+    }
+
+    /**
+     * De lijst die is ingesteld als standaard voor deze site, of null.
+     *
+     * Bewust ook op site gefilterd en niet alleen op id: blijft er een instelling
+     * achter die naar een lijst van een andere site wijst, dan hoort daar geen
+     * lijst uit te komen in plaats van de verkeerde.
+     */
+    public function defaultList(?string $siteId = null): ?NewsletterList
+    {
+        $siteId = $siteId ?: Sites::getActive();
+        $listId = Customsetting::get('newsletter_default_list_id', $siteId);
+
+        if (! $listId) {
+            return null;
+        }
+
+        return NewsletterList::forSite($siteId)->find($listId);
     }
 
     /**

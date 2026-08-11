@@ -15,6 +15,7 @@ use Dashed\DashedNewsletter\Segments\Conditions\FieldCondition;
 use Dashed\DashedNewsletter\Segments\Conditions\SourceCondition;
 use Dashed\DashedNewsletter\Segments\Conditions\StatusCondition;
 use Dashed\DashedNewsletter\Segments\Conditions\SubscribedAtCondition;
+use Dashed\DashedNewsletter\Filament\Pages\Settings\DashedNewsletterSettingsPage;
 
 class DashedNewsletterServiceProvider extends PackageServiceProvider
 {
@@ -59,6 +60,32 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
         cms()->builder('plugins', array_merge(cms()->builder('plugins') ?: [], [
             new DashedNewsletterPlugin(),
         ]));
+
+        cms()->registerSettingsPage(
+            DashedNewsletterSettingsPage::class,
+            'Nieuwsbrief',
+            'envelope-open',
+            'Beheer de standaardlijst en het overnemen van contacten'
+        );
+
+        cms()->registerSettingsDocs(
+            page: DashedNewsletterSettingsPage::class,
+            title: 'Nieuwsbrief instellingen',
+            intro: 'De nieuwsbrief werkt met lijsten. Elke lijst heeft zijn eigen afzender, velden, segmenten en contacten, en die stel je bij de lijst zelf in onder Communicatie. Op deze pagina staat alleen wat over de lijsten heen gaat.',
+            sections: [
+                [
+                    'heading' => 'Wat kun je hier instellen?',
+                    'body' => 'De standaardlijst van een site. Die staat vooraf gekozen als je een formulier aan de nieuwsbrief koppelt, en aanmeldingen die geen lijst meegeven komen daarop uit. Laat je hem leeg, dan kies je per keer.',
+                ],
+                [
+                    'heading' => 'Contacten overnemen',
+                    'body' => 'Heb je een koppeling met een aanbieder waar al contacten staan, dan verschijnt daar bovenaan een knop voor. Uitgeschreven contacten blijven daarbij uitgeschreven, en bij de aanbieder zelf verandert er niets.',
+                ],
+            ],
+            fields: [
+                'Standaardlijst' => 'De lijst waar aanmeldingen op uitkomen als er geen lijst is meegegeven.',
+            ],
+        );
 
         Newsletter::registerSegmentCondition(new FieldCondition());
         Newsletter::registerSegmentCondition(new StatusCondition());

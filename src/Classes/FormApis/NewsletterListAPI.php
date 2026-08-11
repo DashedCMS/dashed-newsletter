@@ -64,6 +64,9 @@ class NewsletterListAPI
             Select::make('newsletter_list_id')
                 ->label('Nieuwsbrieflijst')
                 ->options(fn () => static::listOptions())
+                // De standaardlijst uit de instellingen staat vooraf gekozen.
+                // Blijft die leeg, dan kiest de redacteur zelf, zoals eerst.
+                ->default(fn () => Newsletter::defaultList()?->id)
                 ->required(),
             Select::make('email_field_id')
                 ->label(__('Email veld'))
