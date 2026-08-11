@@ -194,6 +194,25 @@ class NewsletterSubscriberResource extends Resource
                 TextEntry::make('unsubscribed_at')->label('Uitgeschreven op')->dateTime()->placeholder('-'),
             ])->columns(3),
 
+            // Zonder deze sectie is een veldwaarde nergens in het beheer te zien
+            // en lijkt een import de gegevens te hebben laten liggen, terwijl ze
+            // er wel staan. Lege waarden krijgen een streepje in plaats van te
+            // verdwijnen: het verschil tussen "leeg" en "niet gevraagd" is hier
+            // precies wat je wilt zien.
+            Section::make('Velden')
+                ->columnSpanFull()
+                ->visible(fn (NewsletterSubscriber $record): bool => $record->list?->fields()->exists() ?? false)
+                ->schema([
+                    RepeatableEntry::make('fieldValues')
+                        ->label('')
+                        ->columnSpanFull()
+                        ->schema([
+                            TextEntry::make('field.label')->label('Veld'),
+                            TextEntry::make('value')->label('Waarde')->placeholder('-'),
+                        ])
+                        ->columns(2),
+                ]),
+
             // events() staat al aflopend gesorteerd op het model: de
             // nieuwste gebeurtenis staat bovenaan de tijdlijn.
             Section::make('Tijdlijn')

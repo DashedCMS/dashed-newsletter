@@ -66,9 +66,33 @@ class SubscribersRelationManager extends RelationManager
         ]);
     }
 
+    /**
+     * Een kolom per veld van deze lijst, standaard verborgen.
+     *
+     * De velden verschillen per lijst, dus dit kan niet vast in de tabel staan.
+     * Verborgen beginnen omdat een lijst met tien velden anders een onleesbare
+     * tabel oplevert; via de kolomkiezer haal je erbij wat je nodig hebt.
+     *
+     * @return array<int, TextColumn>
+     */
+    private function fieldColumns(): array
+    {
+        return $this->getOwnerRecord()->fields->map(
+            fn ($field): TextColumn => TextColumn::make('field_' . $field->key)
+                ->label($field->label)
+                ->toggleable(isToggledHiddenByDefault: true)
+                ->placeholder('-')
+                ->state(fn (NewsletterSubscriber $record) => $record->fieldValues
+                    ->firstWhere('newsletter_field_id', $field->id)?->value)
+        )->all();
+    }
+
     public function table(Table $table): Table
     {
         return $table
+            // De veldkolommen lezen per rij hun waarden, dus die eager loaden;
+            // anders staat er een query per contact per pagina.
+            ->modifyQueryUsing(fn ($query) => $query->with('fieldValues'))
             ->columns([
                 TextColumn::make('email')->label('E-mailadres')->searchable(),
                 TextColumn::make('status')
@@ -76,6 +100,7 @@ class SubscribersRelationManager extends RelationManager
                     ->badge()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
                 TextColumn::make('source')->label('Bron'),
+                ...$this->fieldColumns(),
                 TextColumn::make('subscribed_at')->label('Aangemeld op')->dateTime()->sortable(),
             ])
             ->filters([

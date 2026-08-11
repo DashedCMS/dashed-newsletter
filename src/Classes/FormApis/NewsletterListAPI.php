@@ -9,7 +9,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Dashed\DashedForms\Models\FormInput;
-use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
@@ -79,8 +79,10 @@ class NewsletterListAPI
                     Select::make('field_id')
                         ->label(__('Formulierveld'))
                         ->options(fn ($record) => $record ? $record->fields()->where('type', 'input')->pluck('name', 'id') : []),
-                    TextInput::make('newsletter_field_key')
-                        ->label(__('Sleutel van het nieuwsbriefveld'))
+                    Select::make('newsletter_field_key')
+                        ->label(__('Nieuwsbriefveld'))
+                        ->options(fn (Get $get): array => static::fieldOptions($get('../../newsletter_list_id')))
+                        ->placeholder(__('Kies eerst een lijst'))
                         ->required(),
                 ])
                 ->columnSpanFull(),
@@ -89,6 +91,27 @@ class NewsletterListAPI
                 ->helperText('De tekst die naast het vinkje staat, letterlijk bewaard als bewijs. Laat je hem leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip, IP en bron, alleen zonder tekst erbij.')
                 ->rows(2),
         ];
+    }
+
+    /**
+     * De velden van een lijst, als sleutel => label.
+     *
+     * Deze stond eerst als vrij tekstvak in het koppelscherm, waar je de sleutel
+     * blind moest intypen. Typte je hem net anders, dan sloeg de koppeling die
+     * waarde stilzwijgend over: een onbekende sleutel wordt genegeerd, dus de
+     * contacten kwamen wel binnen maar zonder voornaam, en daar kom je pas veel
+     * later achter.
+     *
+     * Staat hier publiek omdat de bestel- en popupkoppeling in andere pakketten
+     * dezelfde lijst nodig hebben.
+     *
+     * @return array<string, string>
+     */
+    public static function fieldOptions(mixed $listId): array
+    {
+        $list = $listId ? NewsletterList::find($listId) : null;
+
+        return $list ? $list->fields()->pluck('label', 'key')->all() : [];
     }
 
     /**
