@@ -33,19 +33,33 @@ class CampaignRecipients
 
         $query->chunkById(500, function ($subscribers) use ($campaign, $siteId, &$pending, &$skipped): void {
             foreach ($subscribers as $subscriber) {
+                $recipient = NewsletterCampaignRecipient::firstOrNew([
+                    'newsletter_campaign_id' => $campaign->id,
+                    'newsletter_subscriber_id' => $subscriber->id,
+                ]);
+
+                // build() mag herhaald worden (vandaag onbereikbaar, maar
+                // niets voorkomt het), en dan mag een regel die al opgepakt
+                // (sending) of afgerond is (sent, failed) niet worden
+                // aangeraakt: dat zou een verzonden mail ongedaan maken en de
+                // regel opnieuw claimbaar maken voor CampaignSender. Alleen
+                // pending en skipped, en een nieuwe regel, mogen (opnieuw)
+                // beoordeeld worden: dat vangt bijvoorbeeld een adres dat pas
+                // ná de eerste opbouw geblokkeerd raakte.
+                if ($recipient->exists && ! in_array($recipient->status, [
+                    NewsletterCampaignRecipient::STATUS_PENDING,
+                    NewsletterCampaignRecipient::STATUS_SKIPPED,
+                ], true)) {
+                    continue;
+                }
+
                 [$status, $reason] = self::verdict($subscriber, $siteId);
 
-                NewsletterCampaignRecipient::updateOrCreate(
-                    [
-                        'newsletter_campaign_id' => $campaign->id,
-                        'newsletter_subscriber_id' => $subscriber->id,
-                    ],
-                    [
-                        'email' => $subscriber->email,
-                        'status' => $status,
-                        'skip_reason' => $reason,
-                    ]
-                );
+                $recipient->fill([
+                    'email' => $subscriber->email,
+                    'status' => $status,
+                    'skip_reason' => $reason,
+                ])->save();
 
                 $status === NewsletterCampaignRecipient::STATUS_PENDING ? $pending++ : $skipped++;
             }
