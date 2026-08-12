@@ -135,12 +135,19 @@ class NewsletterCampaignResource extends Resource
 
     /**
      * Bewerken mag alleen zolang de campagne nog niet in gang is gezet: concept
-     * en ingepland. Verzonden en bezig zijn duidelijk te laat, maar geannuleerd
-     * en mislukt sluiten we om dezelfde reden uit: allebei kunnen ze halverwege
-     * een verzending zijn gestopt, dus een deel van de ontvangers heeft dan al
-     * de oude inhoud gekregen. Bewerken zou de campagne laten afwijken van wat
-     * er echt de deur uit is, precies het probleem dat bij verzonden/bezig
-     * speelt.
+     * en ingepland. Bij verzonden en bezig is dat duidelijk: een deel van de
+     * ontvangers heeft de oude inhoud al binnen, en bewerken zou de campagne
+     * laten afwijken van wat er echt de deur uit is.
+     *
+     * Geannuleerd en mislukt staan hier om een andere reden op slot, en dat is
+     * een keuze en geen gevolg. Vandaag zet alleen SendScheduledCampaigns een
+     * campagne op mislukt, en dat gebeurt vóórdat er ook maar één ontvanger is
+     * aangeraakt; geannuleerd wordt op dit moment nergens gezet. Er is dus nu
+     * nog geen halve verzending om te beschermen. Zodra er wel afgebroken kan
+     * worden midden in het verzenden is die er wel, en dan is dit het gedrag
+     * dat je wilt. Beide statussen alvast weigeren is de veilige kant, want
+     * openzetten kan later alsnog en een verkeerd bewerkte verzonden campagne
+     * niet.
      *
      * Dit overschrijft getEditAuthorizationResponse() in plaats van canEdit():
      * canEdit() roept hem al aan (zie Filament\Resources\Resource\Concerns\
