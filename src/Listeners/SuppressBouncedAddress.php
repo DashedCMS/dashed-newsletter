@@ -56,11 +56,15 @@ class SuppressBouncedAddress
      */
     private function siteIdsFor(SentEmail $mail, string $email): array
     {
+        // effectiveSiteId() en niet rechtstreeks ->site_id: een campagne kan
+        // buiten het scherm om aangemaakt zijn zonder eigen site_id (zie
+        // NewsletterCampaign::effectiveSiteId()), en dan is de site van zijn
+        // lijst de enige die er nog is.
         $campagneSite = NewsletterCampaignRecipient::where('sent_email_id', $mail->id)
-            ->with('campaign:id,site_id')
+            ->with('campaign.list:id,site_id')
             ->first()
             ?->campaign
-            ?->site_id;
+            ?->effectiveSiteId();
 
         if ($campagneSite !== null) {
             return [(string) $campagneSite];

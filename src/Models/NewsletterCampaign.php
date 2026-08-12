@@ -67,4 +67,22 @@ class NewsletterCampaign extends Model
             ?: Customsetting::get('site_name', $this->site_id)
             ?: config('mail.from.name');
     }
+
+    /**
+     * De site waarop deze campagne blokkadecontrole (NewsletterSuppression)
+     * en zichtbaarheid in het beheer draait. Via het scherm staat site_id
+     * altijd gelijk aan dat van de gekozen lijst (zie NewsletterCampaignResource
+     * en CreateNewsletterCampaign), maar site_id is nullable en het model
+     * heeft $guarded = [], dus een campagne die buiten het scherm om
+     * aangemaakt wordt (een test, een toekomstige API) kan hem leeg laten.
+     * Zonder deze afleiding sloegen CampaignRecipients en CampaignSender de
+     * blokkadelijst dan stilzwijgend over: beide keken alleen naar
+     * $campaign->site_id en deden niets als die leeg was. Val daarom terug
+     * op de lijst waar de campagne aan hangt: die site hoort per definitie
+     * hetzelfde te zijn.
+     */
+    public function effectiveSiteId(): ?string
+    {
+        return $this->site_id ?: $this->list?->site_id;
+    }
 }

@@ -27,7 +27,12 @@ class CampaignRecipients
             ? SegmentQuery::for($campaign->segment)
             : NewsletterSubscriber::where('newsletter_list_id', $campaign->newsletter_list_id);
 
-        $siteId = (string) ($campaign->site_id ?? '');
+        // effectiveSiteId() en niet rechtstreeks $campaign->site_id: die kolom
+        // is nullable, en zonder deze afleiding sloeg een campagne zonder
+        // eigen site_id (elke aanmaak buiten het scherm om, want daar staat
+        // hij altijd vast) de blokkadelijst hieronder stilzwijgend over. Zie
+        // NewsletterCampaign::effectiveSiteId().
+        $siteId = (string) ($campaign->effectiveSiteId() ?? '');
         $pending = 0;
         $skipped = 0;
 

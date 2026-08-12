@@ -22,6 +22,19 @@ class CampaignGuard
             return 'Deze campagne is al verzonden of is op dit moment aan het verzenden.';
         }
 
+        // Zonder site geen blokkadecontrole: CampaignRecipients en
+        // CampaignSender leiden de site af via
+        // NewsletterCampaign::effectiveSiteId() (eigen site_id, anders die van
+        // de lijst), maar bestaat geen van beide, dan is er domweg geen site
+        // om NewsletterSuppression op te bevragen en verstuurt deze campagne
+        // langs elke blokkade heen. Via het scherm staat site_id altijd vast,
+        // dus dit raakt alleen een campagne die buiten het scherm om is
+        // aangemaakt (site_id is nullable, het model heeft $guarded = []).
+        // Zo'n campagne hoort niet te verzenden totdat dat rechtgezet is.
+        if (blank($campaign->effectiveSiteId())) {
+            return 'De campagne heeft geen site.';
+        }
+
         if (blank($campaign->subject)) {
             return 'De campagne heeft geen onderwerp.';
         }

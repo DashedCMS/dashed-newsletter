@@ -77,7 +77,11 @@ class CampaignSender
             return;
         }
 
-        $siteId = (string) ($campaign->site_id ?? '');
+        // effectiveSiteId(), zelfde reden als CampaignRecipients::build():
+        // $campaign->site_id is nullable, en zonder deze afleiding zou een
+        // campagne zonder eigen site_id hier ook aan het versturen zelf
+        // stilzwijgend langs de blokkadelijst glippen.
+        $siteId = (string) ($campaign->effectiveSiteId() ?? '');
 
         if ($siteId !== '' && NewsletterSuppression::blocks($siteId, $recipient->email)) {
             self::skip($recipient, NewsletterCampaignRecipient::SKIP_SUPPRESSED);
