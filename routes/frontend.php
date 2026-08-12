@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Facades\Route;
 use Dashed\DashedNewsletter\Http\Controllers\UnsubscribeController;
+use Dashed\DashedNewsletter\Http\Controllers\TestUnsubscribeController;
+
+// Specifiekere route eerst en bewust op een eigen pad: Laravel matcht op
+// registratievolgorde, dus zou deze ná '/nieuwsbrief/afmelden/{recipient}'
+// staan, dan ving die generieke route 'proefmail' net zo goed op als elk
+// ander (niet-numeriek) segment. Zie UnsubscribeLink::for(): een testmail
+// heeft geen opgeslagen ontvangerregel, dus geen geldig id om naar te
+// ondertekenen, en wijst hierheen in plaats van naar de gewone afmeldlink.
+Route::match(['get', 'post'], '/nieuwsbrief/afmelden/proefmail', TestUnsubscribeController::class)
+    ->name('dashed.frontend.newsletter.unsubscribe-test');
 
 // GET voor de link in de mail, POST voor de afmeldknop die een mailbox zelf
 // toont bij een List-Unsubscribe-Post-kop.

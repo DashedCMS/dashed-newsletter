@@ -46,6 +46,10 @@ class EditNewsletterCampaign extends EditRecord
                     // regel die niet wordt opgeslagen: geen aanraking van de
                     // ontvangerstabel, de tellers of de status van de campagne,
                     // dus niets hiervan beinvloedt een latere echte verzending.
+                    // $recipient->exists blijft daardoor false, en
+                    // UnsubscribeLink::for() herkent daaraan een proefmail:
+                    // die wijst naar een uitlegpagina in plaats van naar een
+                    // ondertekende link met een id dat nooit heeft bestaan.
                     //
                     // Bewust geen toets aan NewsletterSuppression of aan de
                     // status van een subscriber, in tegenstelling tot
@@ -58,7 +62,6 @@ class EditNewsletterCampaign extends EditRecord
                         'email' => $data['email'],
                         'status' => NewsletterCampaignRecipient::STATUS_PENDING,
                     ]);
-                    $recipient->id = 0;
 
                     Mail::to($data['email'])->send(new NewsletterCampaignMail($campaign, $recipient));
 
