@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Dashed\DashedNewsletter\Campaigns;
 
+use Illuminate\Mail\SentMessage;
 use Illuminate\Support\Facades\Mail;
+use Dashed\DashedCore\Models\SentEmail;
 use Dashed\DashedNewsletter\Mail\NewsletterCampaignMail;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Models\NewsletterSuppression;
@@ -65,7 +67,7 @@ class CampaignSender
             // waardoor een wél afgeleverde mail hier als mislukt geboekt kan
             // worden; niets verstuurt een failed-regel opnieuw, dus dat kost
             // alleen een verkeerd label, geen dubbele mail.
-            Mail::to($recipient->email)->send(new NewsletterCampaignMail($campaign, $recipient));
+            $sentMessage = Mail::to($recipient->email)->send(new NewsletterCampaignMail($campaign, $recipient));
         } catch (\Throwable $e) {
             $recipient->update([
                 'status' => NewsletterCampaignRecipient::STATUS_FAILED,
@@ -79,8 +81,30 @@ class CampaignSender
         $recipient->update([
             'status' => NewsletterCampaignRecipient::STATUS_SENT,
             'sent_at' => now(),
+            'sent_email_id' => self::sentEmailId($sentMessage),
         ]);
         $campaign->increment('sent_count');
+    }
+
+    /**
+     * Koppelt deze regel aan zijn rij in dashed__sent_emails, zodat een latere
+     * bounce of klacht via SuppressBouncedAddress terug kan naar de campagne
+     * (en dus naar de juiste, tekstuele site_id: zie het klassecommentaar
+     * daar). LogSentEmail schrijft die rij synchroon op de MessageSent-
+     * gebeurtenis die Mail::send() vóór teruggeven al afvuurt, dus hij staat
+     * er al als we hier komen. Kan null zijn als het loggen in dashed-core
+     * uitstaat of de mail geen SentMessage opleverde (bijvoorbeeld een fake
+     * mailer in een test).
+     */
+    private static function sentEmailId(?SentMessage $sentMessage): ?int
+    {
+        $messageId = $sentMessage?->getMessageId();
+
+        if (! $messageId) {
+            return null;
+        }
+
+        return SentEmail::where('message_id', $messageId)->value('id');
     }
 
     private static function skip(NewsletterCampaignRecipient $recipient, string $reason): void
