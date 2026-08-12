@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter;
 
 use Dashed\DashedCore\Models\User;
+use Illuminate\Support\Facades\Event;
 use Spatie\LaravelPackageTools\Package;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Dashed\DashedNewsletter\Listeners\LinkSubscriberToUser;
+use Dashed\DashedNewsletter\Listeners\SuppressBouncedAddress;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
 use Dashed\DashedNewsletter\Classes\FormApis\NewsletterListAPI;
 use Dashed\DashedNewsletter\Segments\Conditions\FieldCondition;
@@ -52,6 +54,11 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        // Op klassenaam luisteren zodat dit pakket geen harde afhankelijkheid
+        // op de gebeurtenisklassen krijgt als dashed-core ouder is.
+        Event::listen('Dashed\\DashedCore\\Events\\SentEmailBouncedEvent', [SuppressBouncedAddress::class, 'bounced']);
+        Event::listen('Dashed\\DashedCore\\Events\\SentEmailComplainedEvent', [SuppressBouncedAddress::class, 'complained']);
+
         User::created(fn (User $user) => app(LinkSubscriberToUser::class)->handle($user));
         User::updated(function (User $user): void {
             if ($user->wasChanged('email')) {
