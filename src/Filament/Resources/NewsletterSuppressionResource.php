@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dashed\DashedNewsletter\Filament\Resources;
 
+use Closure;
 use UnitEnum;
 use BackedEnum;
 use Filament\Tables\Table;
@@ -47,20 +48,28 @@ class NewsletterSuppressionResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        // Bewust geen site-select, anders dan NewsletterListResource en
+        // NewsletterCampaignResource: die tonen juist alle sites naast elkaar.
+        // Deze lijst is operationeel en hoort bij de site waar je nu in werkt
+        // (getEloquentQuery() hieronder filtert daar altijd op). Een keuzeveld
+        // zou een beheerder toestaan een adres op een andere site te
+        // blokkeren, waarna de nieuwe regel meteen uit de gefilterde lijst
+        // verdwijnt: dat oogt als een mislukte actie terwijl hij gelukt is.
+        // site_id wordt daarom altijd gevuld met Sites::getActive() in
+        // mutateDataUsing hieronder, niet met een keuze uit het formulier.
         return $schema->components([
-            // Zelfde vorm als NewsletterListResource en NewsletterCampaignResource:
-            // bij één site verborgen en gevuld met de enige site, bij meerdere
-            // sites zichtbaar en verplicht. De blokkadelijst is per site (zie
-            // NewsletterSuppression::blocks()), dus een beheerder met meerdere
-            // sites moet hier kunnen kiezen voor welke site hij blokkeert.
-            Select::make('site_id')
-                ->label('Site')
-                ->options(collect(Sites::getSites())->pluck('name', 'id')->toArray())
-                ->default(fn () => Sites::getFirstSite()['id'])
-                ->required()
-                ->hidden(fn (): bool => ! (Sites::getAmountOfSites() > 1)),
             TextInput::make('email')->label('E-mailadres')->email()->required()
-                ->dehydrateStateUsing(fn (string $state): string => NewsletterSuppression::normalize($state)),
+                ->dehydrateStateUsing(fn (string $state): string => NewsletterSuppression::normalize($state))
+                // Zonder dit vangt de unieke index op site_id + email de
+                // dubbele regel pas af bij het opslaan, met een ruwe
+                // databasefout op het scherm. blocks() is ook hier de ene
+                // waarheid: dezelfde check als verzenden gebruikt, niet een
+                // losse (case-gevoelige) unique() op de kolom.
+                ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                    if (NewsletterSuppression::blocks(Sites::getActive(), (string) $value)) {
+                        $fail('Dit e-mailadres staat al op de blokkadelijst.');
+                    }
+                }),
             Select::make('reason')->label('Reden')->options(self::reasonOptions())
                 ->default(NewsletterSuppression::REASON_MANUAL)->required(),
             Textarea::make('notes')->label('Aantekening')->rows(2),
@@ -72,27 +81,19 @@ class NewsletterSuppressionResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('email')->label('E-mailadres')->searchable(),
-                TextColumn::make('site_id')
-                    ->label('Site')
-                    ->sortable()
-                    ->hidden(! (Sites::getAmountOfSites() > 1)),
                 TextColumn::make('reason')->label('Reden')->badge()
                     ->formatStateUsing(fn (string $state) => self::reasonOptions()[$state] ?? $state),
                 TextColumn::make('source')->label('Bron')->placeholder('-'),
                 TextColumn::make('created_at')->label('Sinds')->dateTime()->sortable(),
             ])
             ->headerActions([
-                // Het site_id-veld hierboven is verborgen bij één site en leunt
-                // dan op zijn default(). Die default wordt bij een gewone
-                // create-pagina netjes gedehydreerd, maar een CreateAction als
-                // headerAction op een Table mount anders en laat een verborgen
-                // veld zonder eigen invoer leeg: zonder deze vangnet crasht het
-                // aanmaken op de NOT NULL van site_id. Staat er ook een gekozen
-                // waarde (bij meerdere sites), dan wint die gewoon.
+                // Geen site-select om uit te lezen (zie form()): site_id komt
+                // hier altijd van de actieve site, ongeacht wat er verder in
+                // $data staat.
                 CreateAction::make()
                     ->label('Adres blokkeren')
                     ->mutateDataUsing(function (array $data): array {
-                        $data['site_id'] ??= Sites::getActive();
+                        $data['site_id'] = Sites::getActive();
 
                         return $data;
                     }),
@@ -110,14 +111,23 @@ class NewsletterSuppressionResource extends Resource
 
     public static function deleteWarningDescription(NewsletterSuppression $record): string
     {
-        if ($record->reason === NewsletterSuppression::REASON_MANUAL) {
-            return 'Dit adres is met de hand geblokkeerd. Verwijderen heft de blokkade op: de eerstvolgende nieuwsbrief gaat er weer naartoe.';
-        }
-
-        $reasonLabel = self::reasonOptions()[$record->reason] ?? $record->reason;
-
-        return 'Dit adres is geblokkeerd vanwege "' . $reasonLabel . '". De vorige keer kwam de mail terug; '
-            . 'verwijderen betekent dat je aanneemt dat dit adres nu weer werkt. De eerstvolgende nieuwsbrief gaat er dan weer naartoe.';
+        // Drie takken, niet twee: een spamklacht is het spiegelbeeld van een
+        // bounce. Bij een bounce kwam de mail niet aan en is verwijderen een
+        // gok dat het adres nu weer werkt. Bij een klacht kwam de mail juist
+        // wel aan: de ontvanger heeft hem gezien en zelf gemeld als spam.
+        // Verwijderen is daar geen gok over bereikbaarheid maar het terugzetten
+        // van iemand die met zoveel woorden gezegd heeft dit niet te willen,
+        // en dat weegt zwaarder dan een bounce. De bounce-tekst hieronder
+        // dient ook als terugvaltekst voor een reden die hier niet expliciet
+        // benoemd is.
+        return match ($record->reason) {
+            NewsletterSuppression::REASON_MANUAL => 'Dit adres is met de hand geblokkeerd. Verwijderen heft de blokkade op: de eerstvolgende nieuwsbrief gaat er weer naartoe.',
+            NewsletterSuppression::REASON_COMPLAINT => 'Dit adres is geblokkeerd vanwege een spamklacht. Anders dan bij een onbestelbaar adres kwam deze mail wel aan: '
+                . 'de ontvanger heeft hem gezien en zelf als spam gemeld. Verwijderen zet dit adres tegen zijn eigen wil terug op de lijst. '
+                . 'De eerstvolgende nieuwsbrief gaat er dan weer naartoe.',
+            default => 'Dit adres is geblokkeerd vanwege "' . (self::reasonOptions()[$record->reason] ?? $record->reason) . '". De vorige keer kwam de mail terug; '
+                . 'verwijderen betekent dat je aanneemt dat dit adres nu weer werkt. De eerstvolgende nieuwsbrief gaat er dan weer naartoe.',
+        };
     }
 
     public static function getEloquentQuery(): Builder
