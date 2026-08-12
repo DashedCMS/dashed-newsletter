@@ -46,6 +46,13 @@ class EditNewsletterCampaign extends EditRecord
                     // regel die niet wordt opgeslagen: geen aanraking van de
                     // ontvangerstabel, de tellers of de status van de campagne,
                     // dus niets hiervan beinvloedt een latere echte verzending.
+                    //
+                    // Bewust geen toets aan NewsletterSuppression of aan de
+                    // status van een subscriber, in tegenstelling tot
+                    // CampaignSender en CampaignRecipients: een beheerder die
+                    // zichzelf een proef stuurt moet die mail ook krijgen, ook
+                    // als dat adres toevallig op de blokkadelijst staat. Dit is
+                    // een besluit, geen vergeten toets.
                     $recipient = new NewsletterCampaignRecipient([
                         'newsletter_campaign_id' => $campaign->id,
                         'email' => $data['email'],
@@ -116,22 +123,16 @@ class EditNewsletterCampaign extends EditRecord
                         return;
                     }
 
-                    // Meteen op 'sending' zetten, vóór het dispatchen van de job.
-                    // CampaignGuard::problem() hierboven keek naar de status van
-                    // vóór deze klik; zonder deze regel zou een tweede klik (of
-                    // een dubbel verzoek) diezelfde 'concept'/'scheduled'-status
-                    // aantreffen en StartCampaignJob een tweede keer voor
-                    // dezelfde campagne dispatchen. StartCampaignJob::handle()
-                    // zet deze status ook zelf, maar dat gebeurt pas als de
-                    // wachtrijjob daadwerkelijk draait; met een echte wachtrij
-                    // zit daar ruimte tussen. Door de vlag hier al te zetten
-                    // ziet een volgende aanroep van de guard, ook binnen
-                    // dezelfde paginasessie, meteen de bijgewerkte status.
-                    $campaign->update([
-                        'status' => NewsletterCampaign::STATUS_SENDING,
-                        'started_at' => now(),
-                    ]);
-
+                    // De overgang naar 'sending' gebeurt bewust niet hier, maar
+                    // pas in StartCampaignJob::handle(), en met een
+                    // voorwaardelijke update in plaats van een gewone save.
+                    // CampaignGuard::problem() hierboven leest de status van
+                    // de campagne; zou deze knop die status alvast zetten, dan
+                    // zou een volgende guard-check (van deze knop, de planner,
+                    // of een tweede job) de campagne altijd als "al aan het
+                    // verzenden" zien, ook de aanroep die de vlag zelf net
+                    // zette. De knop dispatcht dus enkel; de claim op wie de
+                    // campagne echt mag starten ligt in de job.
                     StartCampaignJob::dispatch($campaign->id);
 
                     Notification::make()->title('Verzenden gestart')->success()->send();
