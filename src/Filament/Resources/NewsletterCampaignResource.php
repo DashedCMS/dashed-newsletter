@@ -11,13 +11,16 @@ use Filament\Schemas\Schema;
 use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
 use Filament\Actions\DeleteAction;
+use Illuminate\Auth\Access\Response;
 use Dashed\DashedCore\Classes\Sites;
 use Filament\Forms\Components\Select;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\RichEditor;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
@@ -59,11 +62,24 @@ class NewsletterCampaignResource extends Resource
     {
         return $schema->components([
             Section::make('Campagne')->columnSpanFull()->columns(2)->schema([
+                // Zelfde vorm als NewsletterListResource: bij één site verborgen
+                // en ingevuld door CreateNewsletterCampaign, bij meerdere sites
+                // zichtbaar en bepalend voor de lijst-opties hieronder. Zonder
+                // deze filter is een lijst van een andere site te kiezen, en dan
+                // gaat de campagne naar mensen op een site waar hij niet bij hoort.
+                Select::make('site_id')
+                    ->label('Actief op site')
+                    ->options(collect(Sites::getSites())->pluck('name', 'id')->toArray())
+                    ->default(fn () => Sites::getFirstSite()['id'])
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set) => $set('newsletter_list_id', null))
+                    ->hidden(fn (): bool => ! (Sites::getAmountOfSites() > 1)),
                 TextInput::make('name')->label('Naam')->required()->maxLength(255)
                     ->helperText('Alleen voor jezelf, dit komt niet in de mail.'),
                 Select::make('newsletter_list_id')
                     ->label('Lijst')
-                    ->options(fn (): array => NewsletterList::pluck('name', 'id')->all())
+                    ->options(fn (Get $get): array => NewsletterList::forSite($get('site_id'))->pluck('name', 'id')->all())
                     ->required()
                     ->live(),
                 Select::make('newsletter_segment_id')
@@ -99,7 +115,12 @@ class NewsletterCampaignResource extends Resource
                     ->state(fn (NewsletterCampaign $record): string => $record->sent_count . ' van ' . $record->recipients_count),
                 TextColumn::make('scheduled_at')->label('Ingepland')->dateTime()->placeholder('-'),
             ])
-            ->recordActions([EditAction::make(), DeleteAction::make()])
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make()->modalDescription(
+                    fn (NewsletterCampaign $record): string => self::deleteWarningDescription($record)
+                ),
+            ])
             ->defaultSort('created_at', 'desc');
     }
 
@@ -110,5 +131,64 @@ class NewsletterCampaignResource extends Resource
             'create' => CreateNewsletterCampaign::route('/create'),
             'edit' => EditNewsletterCampaign::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Bewerken mag alleen zolang de campagne nog niet in gang is gezet: concept
+     * en ingepland. Verzonden en bezig zijn duidelijk te laat, maar geannuleerd
+     * en mislukt sluiten we om dezelfde reden uit: allebei kunnen ze halverwege
+     * een verzending zijn gestopt, dus een deel van de ontvangers heeft dan al
+     * de oude inhoud gekregen. Bewerken zou de campagne laten afwijken van wat
+     * er echt de deur uit is, precies het probleem dat bij verzonden/bezig
+     * speelt.
+     *
+     * Dit overschrijft getEditAuthorizationResponse() in plaats van canEdit():
+     * canEdit() roept hem al aan (zie Filament\Resources\Resource\Concerns\
+     * HasAuthorization), maar EditAction/DeleteAction in een tabel of op de
+     * headeractie van een pagina lezen alléén getEditAuthorizationResponse() /
+     * getDeleteAuthorizationResponse(). Een canEdit()-override alleen zou de
+     * bewerkpagina wel op slot zetten maar de knop in de tabel niet.
+     */
+    public static function getEditAuthorizationResponse(Model $record): Response
+    {
+        if (in_array($record->status, [NewsletterCampaign::STATUS_CONCEPT, NewsletterCampaign::STATUS_SCHEDULED], true)) {
+            return Response::allow();
+        }
+
+        return Response::deny('Deze campagne is al in gang gezet en kan niet meer bewerkt worden.');
+    }
+
+    /**
+     * Verwijderen mag altijd, behalve terwijl er op dit moment verstuurd
+     * wordt: dat zou de portie die net loopt onder de voeten wegtrekken. Een
+     * afgeronde campagne (verzonden, geannuleerd, mislukt) mag een beheerder
+     * juist wel opruimen, maar de foreign key op de ontvangers staat op
+     * cascadeOnDelete, dus de hele verzendgeschiedenis gaat dan mee. Dat mag
+     * niet stilzwijgend gebeuren, vandaar de modalDescription hieronder.
+     */
+    public static function getDeleteAuthorizationResponse(Model $record): Response
+    {
+        if ($record->status === NewsletterCampaign::STATUS_SENDING) {
+            return Response::deny('Deze campagne is op dit moment aan het verzenden.');
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Zelfde vorm als NewsletterListResource::table()'s modalDescription voor
+     * zijn eigen cascade: laat zien wat er precies meegaat, met een ander
+     * bericht als er nog niets te verliezen is.
+     */
+    public static function deleteWarningDescription(NewsletterCampaign $record): string
+    {
+        $count = $record->recipients()->count();
+
+        if ($count === 0) {
+            return 'Deze campagne heeft nog geen ontvangers. Weet je zeker dat je hem wilt verwijderen?';
+        }
+
+        return 'Deze campagne heeft ' . $count . ' ' . ($count === 1 ? 'ontvanger' : 'ontvangers')
+            . ' in de verzendgeschiedenis. Die gaat mee weg bij het verwijderen. Dit is niet terug te draaien.';
     }
 }
