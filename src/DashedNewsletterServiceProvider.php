@@ -48,7 +48,8 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
             ->runsMigrations()
             ->hasConfigFile()
             ->hasViews('dashed-newsletter')
-            ->hasRoute('frontend');
+            ->hasRoute('frontend')
+            ->hasCommand(\Dashed\DashedNewsletter\Commands\SendScheduledCampaigns::class);
     }
 
     public function packageRegistered(): void
@@ -59,6 +60,13 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        $this->app->booted(function (): void {
+            app(\Illuminate\Console\Scheduling\Schedule::class)
+                ->command('dashed:send-scheduled-campaigns')
+                ->everyMinute()
+                ->withoutOverlapping();
+        });
+
         // Op klassenaam luisteren zodat dit pakket geen harde afhankelijkheid
         // op de gebeurtenisklassen krijgt als dashed-core ouder is.
         Event::listen('Dashed\\DashedCore\\Events\\SentEmailBouncedEvent', [SuppressBouncedAddress::class, 'bounced']);
