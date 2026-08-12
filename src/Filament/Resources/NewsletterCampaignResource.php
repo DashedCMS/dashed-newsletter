@@ -130,8 +130,12 @@ class NewsletterCampaignResource extends Resource
                 // zomaar bij elke gevulde waarde: StartCampaignJob wist
                 // failure_reason bij een herstart, dus dit is voornamelijk
                 // een extra slot, geen enige bewaker.
+                // Via state() en niet via formatStateUsing(): Filament kijkt of
+                // de waarde leeg is vóórdat het formatteren gebeurt, dus een
+                // formatter die null teruggeeft levert een leeg vakje op in
+                // plaats van het streepje dat alle andere rijen tonen.
                 TextColumn::make('failure_reason')->label('Reden mislukt')->placeholder('-')->wrap()
-                    ->formatStateUsing(fn (?string $state, NewsletterCampaign $record): ?string => $record->status === NewsletterCampaign::STATUS_FAILED ? $state : null),
+                    ->state(fn (NewsletterCampaign $record): ?string => $record->status === NewsletterCampaign::STATUS_FAILED ? $record->failure_reason : null),
                 TextColumn::make('sent_count')->label('Verzonden')
                     ->state(fn (NewsletterCampaign $record): string => $record->sent_count . ' van ' . $record->recipients_count),
                 TextColumn::make('scheduled_at')->label('Ingepland')->dateTime()->placeholder('-'),
