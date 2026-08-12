@@ -46,7 +46,6 @@ class CampaignSender
             return;
         }
 
-        $subscriber = $recipient->subscriber;
         $campaign = $recipient->campaign;
 
         // Vers uit de database, niet de campagne die met de portiejob is
@@ -62,7 +61,17 @@ class CampaignSender
             return;
         }
 
-        if (! $subscriber || $subscriber->status !== NewsletterSubscriber::STATUS_ACTIVE) {
+        // Vers opgevraagd en niet $recipient->subscriber: SendCampaignChunkJob
+        // laadt die relatie mee bij het begin van de hele portie, en bij
+        // tweehonderd mails per portie is dat lang genoeg voor iemand om zich
+        // tussentijds af te melden. De blokkadelijst hieronder wordt al wel
+        // per ontvanger vers bevraagd; de status van het contact hoort dat
+        // net zo goed te zijn. Ontbreekt het contact (verwijderd), dan is de
+        // waarde null en dat is net zo min 'active'.
+        $subscriberStatus = NewsletterSubscriber::where('id', $recipient->newsletter_subscriber_id)
+            ->value('status');
+
+        if ($subscriberStatus !== NewsletterSubscriber::STATUS_ACTIVE) {
             self::skip($recipient, NewsletterCampaignRecipient::SKIP_UNSUBSCRIBED);
 
             return;
