@@ -22,9 +22,24 @@ class CampaignSender
 {
     public static function send(NewsletterCampaignRecipient $recipient): void
     {
-        // Al afgehandeld: niet nog eens. Dit is de grendel die een herstart van
-        // de wachtrij ongevaarlijk maakt.
-        if ($recipient->status !== NewsletterCampaignRecipient::STATUS_PENDING) {
+        // Claim de regel in de database, niet als vergelijking op het geladen
+        // object. Twee workers die dezelfde regel oppakken lezen allebei
+        // 'pending' in het geheugen; een gewone if-check op $recipient->status
+        // zou ze dan allebei laten versturen. De voorwaardelijke update
+        // hieronder raakt bij maar één van de twee een rij, en dat aantal
+        // geraakte rijen is de enige betrouwbare uitspraak over wie de regel
+        // mag afhandelen.
+        //
+        // Valt de worker om ná deze claim maar vóór of tijdens het versturen,
+        // dan blijft de regel op 'sending' staan en pakt niemand hem opnieuw
+        // op: die ene ontvanger mist dan de mail. Dat is bewust de kant waarop
+        // dit moet mislukken. Een gemiste nieuwsbrief is vervelend en met de
+        // hand te herstellen; een dubbele is niet terug te draaien.
+        $geclaimd = NewsletterCampaignRecipient::where('id', $recipient->id)
+            ->where('status', NewsletterCampaignRecipient::STATUS_PENDING)
+            ->update(['status' => NewsletterCampaignRecipient::STATUS_SENDING]);
+
+        if ($geclaimd === 0) {
             return;
         }
 
@@ -46,6 +61,10 @@ class CampaignSender
         }
 
         try {
+            // Deze catch vangt ook een listener die pas ná de aflevering gooit,
+            // waardoor een wél afgeleverde mail hier als mislukt geboekt kan
+            // worden; niets verstuurt een failed-regel opnieuw, dus dat kost
+            // alleen een verkeerd label, geen dubbele mail.
             Mail::to($recipient->email)->send(new NewsletterCampaignMail($campaign, $recipient));
         } catch (\Throwable $e) {
             $recipient->update([

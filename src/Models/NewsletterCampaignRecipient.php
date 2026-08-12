@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class NewsletterCampaignRecipient extends Model
 {
     public const STATUS_PENDING = 'pending';
+    public const STATUS_SENDING = 'sending';
     public const STATUS_SENT = 'sent';
     public const STATUS_SKIPPED = 'skipped';
     public const STATUS_FAILED = 'failed';
