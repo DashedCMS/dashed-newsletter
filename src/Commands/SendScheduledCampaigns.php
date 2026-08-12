@@ -28,8 +28,15 @@ class SendScheduledCampaigns extends Command
             if ($problem !== null) {
                 // Niet stil laten liggen wachten: een campagne die niet
                 // verzendbaar is blijft anders elke minuut opnieuw geprobeerd
-                // worden zonder dat iemand het ziet.
-                $campaign->update(['status' => NewsletterCampaign::STATUS_FAILED]);
+                // worden zonder dat iemand het ziet. De reden gaat mee de
+                // campagne op, niet alleen naar deze commandoregel: zonder dat
+                // stond er in het beheer niets dan de statusnaam "Mislukt", en
+                // moest een beheerder in de serverlogs zoeken om te weten wat
+                // hij moest repareren.
+                $campaign->update([
+                    'status' => NewsletterCampaign::STATUS_FAILED,
+                    'failure_reason' => $problem,
+                ]);
                 $this->error($campaign->name . ': ' . $problem);
 
                 continue;

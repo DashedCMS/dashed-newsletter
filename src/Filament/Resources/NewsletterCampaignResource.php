@@ -20,6 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Placeholder;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Dashed\DashedNewsletter\Models\NewsletterList;
@@ -64,6 +65,17 @@ class NewsletterCampaignResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
+            // Alleen zichtbaar op een mislukte campagne: vóór deze reparatie
+            // stond er in het beheer niets dan de statusnaam "Mislukt", en
+            // moest een beheerder in de serverlogs van schedule:run zoeken om
+            // te weten wat hij moest repareren.
+            Section::make('Mislukt')->columnSpanFull()
+                ->visible(fn (?NewsletterCampaign $record): bool => $record?->status === NewsletterCampaign::STATUS_FAILED)
+                ->schema([
+                    Placeholder::make('failure_reason')
+                        ->label('Reden')
+                        ->content(fn (?NewsletterCampaign $record): string => $record?->failure_reason ?? 'Onbekend.'),
+                ]),
             Section::make('Campagne')->columnSpanFull()->columns(2)->schema([
                 // Zelfde vorm als NewsletterListResource: bij één site verborgen
                 // en ingevuld door CreateNewsletterCampaign, bij meerdere sites
@@ -114,6 +126,7 @@ class NewsletterCampaignResource extends Resource
                 TextColumn::make('segment.name')->label('Segment')->placeholder('Hele lijst'),
                 TextColumn::make('status')->label('Status')->badge()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
+                TextColumn::make('failure_reason')->label('Reden mislukt')->placeholder('-')->wrap(),
                 TextColumn::make('sent_count')->label('Verzonden')
                     ->state(fn (NewsletterCampaign $record): string => $record->sent_count . ' van ' . $record->recipients_count),
                 TextColumn::make('scheduled_at')->label('Ingepland')->dateTime()->placeholder('-'),
@@ -154,22 +167,22 @@ class NewsletterCampaignResource extends Resource
 
     /**
      * Bewerken mag zolang er geen halve verzending te beschermen is: concept,
-     * ingepland, en geannuleerd. Bij verzonden en bezig is dat duidelijk: een
-     * deel van de ontvangers heeft de (huidige) inhoud al binnen of krijgt hem
-     * op dit moment, en bewerken zou de campagne laten afwijken van wat er
-     * echt de deur uit is of gaat.
+     * ingepland, geannuleerd, en mislukt. Bij verzonden en bezig is dat
+     * duidelijk: een deel van de ontvangers heeft de (huidige) inhoud al
+     * binnen of krijgt hem op dit moment, en bewerken zou de campagne laten
+     * afwijken van wat er echt de deur uit is of gaat.
      *
-     * Geannuleerd zat hier eerder ook op slot, met als redenering dat zodra
-     * afbreken tijdens het verzenden mogelijk werd er alsnog iets te
-     * beschermen zou zijn. Dat bleek de verkeerde afweging: een afgebroken
-     * campagne is precies het geval waarin een beheerder móet kunnen bewerken
-     * (bijvoorbeeld het segment of onderwerp herstellen na een vastgelopen
-     * verzending), en CampaignCanceller::cancel() laat de al verzonden regels
-     * ongemoeid, dus die geschiedenis blijft kloppen ongeacht latere
-     * bewerkingen.
-     *
-     * Mislukt staat hier nog wel op slot; dat is bevinding 3 van deze
-     * reparatieronde en wordt in een aparte wijziging opgelost.
+     * Geannuleerd en mislukt zaten hier eerder allebei op slot, met als
+     * redenering dat zodra afbreken tijdens het verzenden mogelijk werd er
+     * alsnog iets te beschermen zou zijn. Dat bleek de verkeerde afweging voor
+     * allebei: een afgebroken campagne is precies het geval waarin een
+     * beheerder móet kunnen bewerken (bijvoorbeeld het segment of onderwerp
+     * herstellen na een vastgelopen verzending), en CampaignCanceller::cancel()
+     * laat de al verzonden regels ongemoeid, dus die geschiedenis blijft
+     * kloppen ongeacht latere bewerkingen. Mislukt is nog stelliger: dat wordt
+     * vandaag alleen gezet door SendScheduledCampaigns, en dat gebeurt vóórdat
+     * er ook maar één ontvanger is aangeraakt (zie CampaignGuard::problem()),
+     * dus daar valt sowieso niets te beschermen.
      *
      * Dit overschrijft getEditAuthorizationResponse() in plaats van canEdit():
      * canEdit() roept hem al aan (zie Filament\Resources\Resource\Concerns\
@@ -184,6 +197,7 @@ class NewsletterCampaignResource extends Resource
             NewsletterCampaign::STATUS_CONCEPT,
             NewsletterCampaign::STATUS_SCHEDULED,
             NewsletterCampaign::STATUS_CANCELLED,
+            NewsletterCampaign::STATUS_FAILED,
         ], true)) {
             return Response::allow();
         }

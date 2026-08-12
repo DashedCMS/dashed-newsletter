@@ -44,6 +44,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 '2026_08_12_000001_create_newsletter_suppressions_table',
                 '2026_08_12_000002_create_newsletter_campaigns_table',
                 '2026_08_12_000003_create_newsletter_campaign_recipients_table',
+                '2026_08_13_000001_add_failure_reason_to_newsletter_campaigns_table',
             ])
             ->runsMigrations()
             ->hasConfigFile()
