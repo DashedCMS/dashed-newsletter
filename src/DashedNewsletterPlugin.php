@@ -9,6 +9,7 @@ use Filament\Contracts\Plugin;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterSubscriberResource;
+use Dashed\DashedNewsletter\Filament\Resources\NewsletterSuppressionResource;
 use Dashed\DashedNewsletter\Filament\Pages\Settings\DashedNewsletterSettingsPage;
 
 class DashedNewsletterPlugin implements Plugin
@@ -25,6 +26,7 @@ class DashedNewsletterPlugin implements Plugin
                 NewsletterListResource::class,
                 NewsletterSubscriberResource::class,
                 NewsletterCampaignResource::class,
+                NewsletterSuppressionResource::class,
             ])
             // Zonder deze regel bestaat de route van de instellingenpagina niet,
             // ook al staat hij wel in het instellingenoverzicht. Het overzicht
