@@ -8,6 +8,7 @@ use Illuminate\Mail\SentMessage;
 use Illuminate\Support\Facades\Mail;
 use Dashed\DashedCore\Models\SentEmail;
 use Dashed\DashedNewsletter\Mail\NewsletterCampaignMail;
+use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Models\NewsletterSuppression;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
@@ -47,6 +48,19 @@ class CampaignSender
 
         $subscriber = $recipient->subscriber;
         $campaign = $recipient->campaign;
+
+        // Vers uit de database, niet de campagne die met de portiejob is
+        // meegeladen: die kan intussen afgebroken zijn (CampaignCanceller)
+        // terwijl deze portie al in de wachtrij stond. Zonder deze controle
+        // zou zo'n portie de campagne alsnog claimen en versturen op basis
+        // van een status die niet meer klopt.
+        if (! $campaign || NewsletterCampaign::where('id', $campaign->id)
+            ->where('status', NewsletterCampaign::STATUS_SENDING)
+            ->doesntExist()) {
+            self::skip($recipient, NewsletterCampaignRecipient::SKIP_CANCELLED);
+
+            return;
+        }
 
         if (! $subscriber || $subscriber->status !== NewsletterSubscriber::STATUS_ACTIVE) {
             self::skip($recipient, NewsletterCampaignRecipient::SKIP_UNSUBSCRIBED);

@@ -25,6 +25,7 @@ class NewsletterCampaignRecipient extends Model
     public const SKIP_UNSUBSCRIBED = 'unsubscribed';
     public const SKIP_SUPPRESSED = 'suppressed';
     public const SKIP_INVALID_EMAIL = 'invalid_email';
+    public const SKIP_CANCELLED = 'cancelled';
 
     protected $table = 'dashed__newsletter_campaign_recipients';
 

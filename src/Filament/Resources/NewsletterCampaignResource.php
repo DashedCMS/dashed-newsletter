@@ -6,6 +6,7 @@ namespace Dashed\DashedNewsletter\Filament\Resources;
 
 use UnitEnum;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use Filament\Actions\EditAction;
@@ -24,6 +25,8 @@ use Filament\Schemas\Components\Utilities\Set;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
+use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\EditNewsletterCampaign;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\ListNewsletterCampaigns;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\CreateNewsletterCampaign;
@@ -116,6 +119,22 @@ class NewsletterCampaignResource extends Resource
                 TextColumn::make('scheduled_at')->label('Ingepland')->dateTime()->placeholder('-'),
             ])
             ->recordActions([
+                // Alleen zichtbaar tijdens 'sending': de enige status waar iets
+                // af te breken valt. Deze knop staat bewust in de tabel en niet
+                // (ook) op de bewerkpagina: getEditAuthorizationResponse()
+                // hieronder wijst een campagne die aan het verzenden is de hele
+                // bewerkpagina al af, dus die knop zou daar nooit te bereiken
+                // zijn.
+                Action::make('cancel')
+                    ->label('Afbreken')
+                    ->icon('heroicon-o-stop-circle')
+                    ->color('danger')
+                    ->visible(fn (NewsletterCampaign $record): bool => $record->status === NewsletterCampaign::STATUS_SENDING)
+                    ->requiresConfirmation()
+                    ->modalHeading('Campagne afbreken')
+                    ->modalDescription(fn (NewsletterCampaign $record): string => self::cancelWarningDescription($record))
+                    ->modalSubmitActionLabel('Afbreken')
+                    ->action(fn (NewsletterCampaign $record) => CampaignCanceller::cancel($record)),
                 EditAction::make(),
                 DeleteAction::make()->modalDescription(
                     fn (NewsletterCampaign $record): string => self::deleteWarningDescription($record)
@@ -134,20 +153,23 @@ class NewsletterCampaignResource extends Resource
     }
 
     /**
-     * Bewerken mag alleen zolang de campagne nog niet in gang is gezet: concept
-     * en ingepland. Bij verzonden en bezig is dat duidelijk: een deel van de
-     * ontvangers heeft de oude inhoud al binnen, en bewerken zou de campagne
-     * laten afwijken van wat er echt de deur uit is.
+     * Bewerken mag zolang er geen halve verzending te beschermen is: concept,
+     * ingepland, en geannuleerd. Bij verzonden en bezig is dat duidelijk: een
+     * deel van de ontvangers heeft de (huidige) inhoud al binnen of krijgt hem
+     * op dit moment, en bewerken zou de campagne laten afwijken van wat er
+     * echt de deur uit is of gaat.
      *
-     * Geannuleerd en mislukt staan hier om een andere reden op slot, en dat is
-     * een keuze en geen gevolg. Vandaag zet alleen SendScheduledCampaigns een
-     * campagne op mislukt, en dat gebeurt vóórdat er ook maar één ontvanger is
-     * aangeraakt; geannuleerd wordt op dit moment nergens gezet. Er is dus nu
-     * nog geen halve verzending om te beschermen. Zodra er wel afgebroken kan
-     * worden midden in het verzenden is die er wel, en dan is dit het gedrag
-     * dat je wilt. Beide statussen alvast weigeren is de veilige kant, want
-     * openzetten kan later alsnog en een verkeerd bewerkte verzonden campagne
-     * niet.
+     * Geannuleerd zat hier eerder ook op slot, met als redenering dat zodra
+     * afbreken tijdens het verzenden mogelijk werd er alsnog iets te
+     * beschermen zou zijn. Dat bleek de verkeerde afweging: een afgebroken
+     * campagne is precies het geval waarin een beheerder móet kunnen bewerken
+     * (bijvoorbeeld het segment of onderwerp herstellen na een vastgelopen
+     * verzending), en CampaignCanceller::cancel() laat de al verzonden regels
+     * ongemoeid, dus die geschiedenis blijft kloppen ongeacht latere
+     * bewerkingen.
+     *
+     * Mislukt staat hier nog wel op slot; dat is bevinding 3 van deze
+     * reparatieronde en wordt in een aparte wijziging opgelost.
      *
      * Dit overschrijft getEditAuthorizationResponse() in plaats van canEdit():
      * canEdit() roept hem al aan (zie Filament\Resources\Resource\Concerns\
@@ -158,7 +180,11 @@ class NewsletterCampaignResource extends Resource
      */
     public static function getEditAuthorizationResponse(Model $record): Response
     {
-        if (in_array($record->status, [NewsletterCampaign::STATUS_CONCEPT, NewsletterCampaign::STATUS_SCHEDULED], true)) {
+        if (in_array($record->status, [
+            NewsletterCampaign::STATUS_CONCEPT,
+            NewsletterCampaign::STATUS_SCHEDULED,
+            NewsletterCampaign::STATUS_CANCELLED,
+        ], true)) {
             return Response::allow();
         }
 
@@ -197,5 +223,26 @@ class NewsletterCampaignResource extends Resource
 
         return 'Deze campagne heeft ' . $count . ' ' . ($count === 1 ? 'ontvanger' : 'ontvangers')
             . ' in de verzendgeschiedenis. Die gaat mee weg bij het verwijderen. Dit is niet terug te draaien.';
+    }
+
+    /**
+     * Legt uit wat afbreken concreet betekent, met echte aantallen: wie de
+     * mail al had blijft dat houden, wie nog moest komen krijgt hem niet meer.
+     */
+    public static function cancelWarningDescription(NewsletterCampaign $record): string
+    {
+        $verzonden = $record->recipients()->where('status', NewsletterCampaignRecipient::STATUS_SENT)->count();
+        $openstaand = $record->recipients()->whereIn('status', [
+            NewsletterCampaignRecipient::STATUS_PENDING,
+            NewsletterCampaignRecipient::STATUS_SENDING,
+        ])->count();
+
+        $verzondenZin = $verzonden === 0
+            ? 'Nog niemand heeft deze campagne gehad.'
+            : $verzonden . ' ' . ($verzonden === 1 ? 'ontvanger heeft' : 'ontvangers hebben')
+                . ' deze campagne al gehad; dat blijft zo, er wordt niets teruggedraaid.';
+
+        return $verzondenZin . ' De resterende ' . $openstaand . ' ' . ($openstaand === 1 ? 'ontvanger' : 'ontvangers')
+            . ' ' . ($openstaand === 1 ? 'krijgt' : 'krijgen') . ' hem niet meer. Dit is niet terug te draaien.';
     }
 }
