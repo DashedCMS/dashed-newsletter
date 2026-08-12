@@ -57,8 +57,19 @@ class StartCampaignJob implements ShouldQueue
         // zichzelf buiten - de guard zou dan altijd "al aan het verzenden"
         // teruggeven, ook voor de aanroep die de vlag net zelf zette. De
         // guard moet de oude status zien; de claim mag pas daarna.
+        //
+        // De claim werkt bewust op uitsluiting (whereNotIn) en niet op een
+        // eigen, positieve lijst van toegestane statussen. CampaignGuard::
+        // problem() weigert precies 'sent' en 'sending', en niets anders:
+        // alles wat de guard hierboven al doorliet moet dus ook hier
+        // claimbaar zijn. Een eigen lijst hier (zoals eerder alleen 'concept'
+        // en 'scheduled') is een tweede plek die "mag deze campagne starten"
+        // moet betekenen, en die twee lopen dan een keer uiteen: precies wat
+        // er eerder gebeurde toen 'cancelled' en 'failed' hier ontbraken
+        // terwijl de guard ze allang doorliet. Blijf dit spiegelbeeld van de
+        // guard, dan is er maar één plek die bepaalt wat "verzendbaar" is.
         $geclaimd = NewsletterCampaign::where('id', $campaign->id)
-            ->whereIn('status', [NewsletterCampaign::STATUS_CONCEPT, NewsletterCampaign::STATUS_SCHEDULED])
+            ->whereNotIn('status', [NewsletterCampaign::STATUS_SENT, NewsletterCampaign::STATUS_SENDING])
             ->update([
                 'status' => NewsletterCampaign::STATUS_SENDING,
                 'started_at' => now(),

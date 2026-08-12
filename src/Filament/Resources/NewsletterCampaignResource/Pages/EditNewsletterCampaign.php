@@ -71,9 +71,21 @@ class EditNewsletterCampaign extends EditRecord
             Action::make('send')
                 ->label('Verzenden')
                 ->icon('heroicon-o-paper-airplane')
-                ->visible(fn (): bool => in_array($this->getRecord()->status, [
-                    NewsletterCampaign::STATUS_CONCEPT,
-                    NewsletterCampaign::STATUS_SCHEDULED,
+                // Spiegelbeeld van CampaignGuard::problem() en de claim in
+                // StartCampaignJob: die weigeren/claimen op precies 'sent' en
+                // 'sending', dus deze knop verbergt zich ook alleen daarvoor.
+                // Verder bepaalt de guard, via de Placeholder hieronder en de
+                // action() eronder, of het werkelijk mag: een afgebroken of
+                // mislukte campagne mag dus best op deze knop klikken, en
+                // krijgt vervolgens gewoon te zien wat er nog ontbreekt (of,
+                // is er niets meer op aan te merken, gaat gewoon van start).
+                // Zonder deze knop is bewerken bij 'cancelled'/'failed'
+                // (zie NewsletterCampaignResource::getEditAuthorizationResponse())
+                // een doodlopende weg: repareren zonder ooit opnieuw te
+                // kunnen versturen.
+                ->visible(fn (): bool => ! in_array($this->getRecord()->status, [
+                    NewsletterCampaign::STATUS_SENT,
+                    NewsletterCampaign::STATUS_SENDING,
                 ], true))
                 ->schema([
                     Placeholder::make('overzicht')
