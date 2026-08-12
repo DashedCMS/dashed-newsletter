@@ -45,7 +45,9 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 '2026_08_12_000002_create_newsletter_campaigns_table',
                 '2026_08_12_000003_create_newsletter_campaign_recipients_table',
             ])
-            ->runsMigrations();
+            ->runsMigrations()
+            ->hasViews('dashed-newsletter')
+            ->hasRoute('frontend');
     }
 
     public function packageRegistered(): void
