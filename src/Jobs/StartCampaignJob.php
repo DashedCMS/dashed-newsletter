@@ -73,6 +73,13 @@ class StartCampaignJob implements ShouldQueue
             ->update([
                 'status' => NewsletterCampaign::STATUS_SENDING,
                 'started_at' => now(),
+                // Een herstart vanuit 'failed' laat anders de oude reden
+                // staan terwijl de campagne inmiddels gewoon (opnieuw)
+                // verzonden wordt: het scherm toonde dan "Verzonden" met de
+                // reden van de vorige mislukking er nog pal naast. Bij elke
+                // herstart geldt: was er een reden, die hoort bij de vorige
+                // poging en niet meer bij deze.
+                'failure_reason' => null,
             ]);
 
         if ($geclaimd === 0) {

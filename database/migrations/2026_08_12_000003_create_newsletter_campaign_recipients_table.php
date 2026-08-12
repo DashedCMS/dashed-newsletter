@@ -22,7 +22,10 @@ return new class () extends Migration {
             $table->string('email');
             $table->string('status')->default('pending')->index();
             $table->string('skip_reason')->nullable();
-            $table->unsignedBigInteger('sent_email_id')->nullable();
+            // Elke bounce- en klacht-webhook (SuppressBouncedAddress) zoekt
+            // hierop om van een mail terug naar zijn campagne te vinden, dus
+            // een index is geen 'misschien later' meer.
+            $table->unsignedBigInteger('sent_email_id')->nullable()->index();
             $table->timestamp('sent_at')->nullable();
             $table->timestamps();
 

@@ -22,6 +22,20 @@ class NewsletterCampaignRecipient extends Model
     public const STATUS_SKIPPED = 'skipped';
     public const STATUS_FAILED = 'failed';
 
+    /**
+     * Een regel die 'sending' stond op het moment dat de campagne werd
+     * afgebroken (CampaignCanceller): een worker had hem net geclaimd, en we
+     * weten niet of de mail de deur uit is vóór de worker omviel of vóór het
+     * afbreken. Bewust een andere eindtoestand dan STATUS_SKIPPED: een
+     * geskipte regel is zeker nooit verstuurd en mag bij een herstart gewoon
+     * opnieuw beoordeeld worden (CampaignRecipients::build() doet dat ook
+     * alleen voor 'pending' en 'skipped'). Deze regel weten we dat niet van,
+     * en bij die onzekerheid kiezen we voor nooit meer versturen in plaats
+     * van het risico op een tweede mail. Daarom een status die build() nooit
+     * aanraakt, net als 'sent' en 'failed'.
+     */
+    public const STATUS_INTERRUPTED = 'interrupted';
+
     public const SKIP_UNSUBSCRIBED = 'unsubscribed';
     public const SKIP_SUPPRESSED = 'suppressed';
     public const SKIP_INVALID_EMAIL = 'invalid_email';

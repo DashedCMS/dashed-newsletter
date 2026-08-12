@@ -126,7 +126,12 @@ class NewsletterCampaignResource extends Resource
                 TextColumn::make('segment.name')->label('Segment')->placeholder('Hele lijst'),
                 TextColumn::make('status')->label('Status')->badge()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
-                TextColumn::make('failure_reason')->label('Reden mislukt')->placeholder('-')->wrap(),
+                // Alleen tonen bij een werkelijk mislukte campagne, niet
+                // zomaar bij elke gevulde waarde: StartCampaignJob wist
+                // failure_reason bij een herstart, dus dit is voornamelijk
+                // een extra slot, geen enige bewaker.
+                TextColumn::make('failure_reason')->label('Reden mislukt')->placeholder('-')->wrap()
+                    ->formatStateUsing(fn (?string $state, NewsletterCampaign $record): ?string => $record->status === NewsletterCampaign::STATUS_FAILED ? $state : null),
                 TextColumn::make('sent_count')->label('Verzonden')
                     ->state(fn (NewsletterCampaign $record): string => $record->sent_count . ' van ' . $record->recipients_count),
                 TextColumn::make('scheduled_at')->label('Ingepland')->dateTime()->placeholder('-'),
