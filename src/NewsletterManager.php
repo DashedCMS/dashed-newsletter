@@ -10,6 +10,7 @@ use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Import\ImportResult;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Import\ImportedContact;
+use Dashed\DashedNewsletter\Exceptions\InvalidEmailException;
 use Dashed\DashedNewsletter\Models\NewsletterConsent;
 use Dashed\DashedNewsletter\Models\NewsletterFieldValue;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
@@ -97,8 +98,12 @@ class NewsletterManager
 
         // Vóór de transactie, niet erin: een ongeldig adres mag nooit een
         // half weggeschreven contact achterlaten.
+        //
+        // Wel stoppen, niet melden: zie InvalidEmailException. Een bezoeker
+        // die zich vertypt is geen storing, en zulke gevallen hoorden hier de
+        // foutmelder te vullen alsof er iets stuk was.
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new \InvalidArgumentException('Ongeldig e-mailadres.');
+            throw new InvalidEmailException('Ongeldig e-mailadres.');
         }
 
         $isNieuweAanmelding = false;
@@ -170,7 +175,7 @@ class NewsletterManager
         // Vóór de transactie, net als bij subscribe(): een ongeldig adres mag
         // geen half weggeschreven contact achterlaten.
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new \InvalidArgumentException('Ongeldig e-mailadres: ' . $contact->email);
+            throw new InvalidEmailException('Ongeldig e-mailadres: ' . $contact->email);
         }
 
         $statuses = [
