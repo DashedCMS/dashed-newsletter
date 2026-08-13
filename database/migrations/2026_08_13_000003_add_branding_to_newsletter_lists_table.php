@@ -39,8 +39,16 @@ return new class () extends Migration {
 
     public function down(): void
     {
+        if (! Schema::hasTable('dashed__newsletter_lists')) {
+            return;
+        }
+
         Schema::table('dashed__newsletter_lists', function (Blueprint $table): void {
-            $table->dropColumn(['header_blocks', 'footer_blocks', 'mail_logo', 'mail_primary_color', 'mail_text_color', 'mail_background_color']);
+            foreach (['header_blocks', 'footer_blocks', 'mail_logo', 'mail_primary_color', 'mail_text_color', 'mail_background_color'] as $kolom) {
+                if (Schema::hasColumn('dashed__newsletter_lists', $kolom)) {
+                    $table->dropColumn($kolom);
+                }
+            }
         });
     }
 };
