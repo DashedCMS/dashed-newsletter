@@ -46,6 +46,9 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 '2026_08_12_000003_create_newsletter_campaign_recipients_table',
                 '2026_08_12_000004_add_sent_email_index_to_newsletter_campaign_recipients_table',
                 '2026_08_13_000001_add_failure_reason_to_newsletter_campaigns_table',
+                '2026_08_13_000002_add_blocks_to_newsletter_campaigns_table',
+                '2026_08_13_000003_add_branding_to_newsletter_lists_table',
+                '2026_08_13_000004_add_default_value_to_newsletter_fields_table',
             ])
             ->runsMigrations()
             ->hasConfigFile()
