@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Campaigns;
 
 use Illuminate\Support\Facades\URL;
+use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
@@ -43,6 +44,25 @@ class CampaignRenderer
             $this->renderBlocks($footerBlocks, $context),
         );
 
+        // brandingColors()['logo'] is meestal een media-id (mediaHelper()->
+        // field in NewsletterListResource), maar hetzelfde veld kan ook via
+        // Customsetting::get('mail_logo'/'site_logo') een letterlijke url
+        // teruggeven (de e-mailinstellingen van dashed-core gebruiken daar
+        // hetzelfde soort veld). getSingleMedia() geeft in dat laatste geval
+        // de string ongewijzigd terug (geen media-id om op te zoeken), en
+        // anders een object met een url-eigenschap, of '' als het media-item
+        // niet meer bestaat. Leeg laten valt terug op de e-mailinstellingen
+        // van de site (zie brandingColors()), en is daar ook niets, dan is
+        // $siteLogo gewoon null: het beloofde "niets tonen" heeft geen
+        // aparte state nodig.
+        $media = $kleuren['logo'] ? mediaHelper()->getSingleMedia($kleuren['logo']) : null;
+        $siteLogo = match (true) {
+            is_object($media) => $media->url ?? null,
+            is_string($media) && $media !== '' => $media,
+            default => null,
+        };
+        $siteUrl = Customsetting::get('site_url', $list?->site_id) ?: config('app.url');
+
         return view('dashed-newsletter::emails.shell', [
             'subject' => (string) $campaign->subject,
             'preheader' => $campaign->preheader,
@@ -50,6 +70,8 @@ class CampaignRenderer
             'backgroundColor' => $kleuren['background'],
             'primaryColor' => $kleuren['primary'],
             'listName' => $list?->name,
+            'siteLogo' => $siteLogo,
+            'siteUrl' => $siteUrl,
             // Header, campagne-inhoud en footer tellen allemaal mee: sinds de
             // header ook bewerkbaar is (NewsletterListResource) kan een
             // afmeldblok net zo goed daar staan. Kijk dan alleen naar
