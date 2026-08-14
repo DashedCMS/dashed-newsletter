@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Event;
 use Spatie\LaravelPackageTools\Package;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Dashed\DashedNewsletter\Mail\EmailBlocks\SocialBlock;
 use Dashed\DashedNewsletter\Mail\EmailBlocks\UnsubscribeBlock;
+use Dashed\DashedNewsletter\Mail\EmailBlocks\WebVersionBlock;
 use Dashed\DashedNewsletter\Listeners\LinkSubscriberToUser;
 use Dashed\DashedNewsletter\Listeners\SuppressBouncedAddress;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
@@ -95,6 +97,8 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
         // afmeldblok.
         if (method_exists(cms(), 'emailBlock')) {
             cms()->emailBlock('unsubscribe', UnsubscribeBlock::class);
+            cms()->emailBlock('social', SocialBlock::class);
+            cms()->emailBlock('web-version', WebVersionBlock::class);
         }
 
         cms()->registerSettingsPage(
