@@ -33,10 +33,11 @@ class CampaignRenderer
             'siteName' => $list?->name,
         ];
 
+        $headerBlocks = $list?->header_blocks ?? [];
         $footerBlocks = $list?->footer_blocks ?? [];
 
         $blocks = array_merge(
-            $this->renderBlocks($list?->header_blocks ?? [], $context),
+            $this->renderBlocks($headerBlocks, $context),
             $this->renderCampaignBody($campaign, $context),
             $this->renderBlocks($footerBlocks, $context),
         );
@@ -48,7 +49,14 @@ class CampaignRenderer
             'backgroundColor' => $kleuren['background'],
             'primaryColor' => $kleuren['primary'],
             'listName' => $list?->name,
-            'hasUnsubscribeBlock' => $this->heeftAfmeldblok($footerBlocks),
+            // Header, campagne-inhoud en footer tellen allemaal mee: sinds de
+            // header ook bewerkbaar is (NewsletterListResource) kan een
+            // afmeldblok net zo goed daar staan. Kijk dan alleen naar
+            // $footerBlocks, dan mist dat geval en plakt de standaardregel
+            // hieronder er een tweede afmeldlink bij.
+            'hasUnsubscribeBlock' => $this->heeftAfmeldblok($headerBlocks)
+                || $this->heeftAfmeldblok($campaign->blocks ?? [])
+                || $this->heeftAfmeldblok($footerBlocks),
         ])->render();
     }
 
@@ -100,11 +108,11 @@ class CampaignRenderer
     }
 
     /**
-     * @param array<int, array<string, mixed>> $footerBlocks
+     * @param array<int, array<string, mixed>> $blocks
      */
-    private function heeftAfmeldblok(array $footerBlocks): bool
+    private function heeftAfmeldblok(array $blocks): bool
     {
-        foreach ($footerBlocks as $block) {
+        foreach ($blocks as $block) {
             if (($block['type'] ?? null) === 'unsubscribe') {
                 return true;
             }
