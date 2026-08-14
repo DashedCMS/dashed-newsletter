@@ -6,6 +6,7 @@ namespace Dashed\DashedNewsletter\Filament\Livewire;
 
 use Livewire\Component;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Filament\Forms\Components\RichEditor\RichContentRenderer;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
@@ -32,6 +33,18 @@ class CampaignPreview extends Component
 
     public ?int $previewRecipientId = null;
 
+    /**
+     * Het contact dat de contactkiezer boven de preview koos, als
+     * newsletter_subscriber_id. Los van $previewRecipientId: die verwijst
+     * naar een al bestaande NewsletterCampaignRecipient-regel, en die
+     * bestaat voor een nog niet verzonden campagne meestal niet
+     * (CampaignRecipients::build() draait pas via StartCampaignJob, dus een
+     * concept of ingeplande campagne heeft nul regels). Een redacteur die
+     * nog aan het opstellen is, kiest daarom een echt contact van de lijst,
+     * geen bestaande verzendregel.
+     */
+    public ?int $previewSubscriberId = null;
+
     public string $breedte = 'breed';
 
     public function html(): string
@@ -52,6 +65,28 @@ class CampaignPreview extends Component
         $recipient = $this->previewRecipientId
             ? NewsletterCampaignRecipient::find($this->previewRecipientId)
             : null;
+
+        if (! $recipient && $this->previewSubscriberId) {
+            // De contactkiezer koos een echt contact van de lijst, maar er is
+            // (meestal) geen NewsletterCampaignRecipient-regel voor dit
+            // contact en deze campagne. Bouw er dan zelf een op, net als de
+            // anonieme fallback hieronder: nergens opgeslagen (geen id, dus
+            // $recipient->exists is false), maar wel met de echte subscriber
+            // eraan gekoppeld zodat CampaignPersonalisation::valuesFor() de
+            // werkelijke veldwaarden van dit contact gebruikt in plaats van
+            // de terugvalwaarden.
+            $subscriber = NewsletterSubscriber::find($this->previewSubscriberId);
+
+            if ($subscriber) {
+                $recipient = new NewsletterCampaignRecipient([
+                    'newsletter_campaign_id' => $campaign->id,
+                    'newsletter_subscriber_id' => $subscriber->id,
+                    'email' => $subscriber->email,
+                ]);
+                $recipient->setRelation('subscriber', $subscriber);
+                $recipient->setRelation('campaign', $campaign);
+            }
+        }
 
         if (! $recipient) {
             // Geen echt contact gekozen: een losse ontvanger die nergens wordt

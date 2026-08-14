@@ -29,6 +29,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
 use Dashed\DashedNewsletter\Filament\Livewire\CampaignPreview;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
@@ -100,7 +101,10 @@ class NewsletterCampaignResource extends Resource
                     ->label('Lijst')
                     ->options(fn (Get $get): array => NewsletterList::forSite($get('site_id'))->pluck('name', 'id')->all())
                     ->required()
-                    ->live(),
+                    ->live()
+                    // Een gekozen voorbeeldcontact van de vorige lijst hoort
+                    // niet mee te lopen naar een andere lijst.
+                    ->afterStateUpdated(fn (Set $set) => $set('preview_subscriber_id', null)),
                 Select::make('newsletter_segment_id')
                     ->label('Segment')
                     ->placeholder('De hele lijst')
@@ -108,9 +112,16 @@ class NewsletterCampaignResource extends Resource
                     ->options(fn (Get $get): array => $get('newsletter_list_id')
                         ? NewsletterSegment::where('newsletter_list_id', $get('newsletter_list_id'))->pluck('name', 'id')->all()
                         : []),
-                TextInput::make('subject')->label('Onderwerp')->required()->maxLength(255),
+                // Ook onderwerp en preheader komen in de gerenderde mail
+                // (CampaignRenderer::renderTemplate() geeft ze door aan
+                // emails.shell), dus zonder ->live(onBlur: true) hier bleef de
+                // preview hangen op wat erin stond toen de blokken voor het
+                // laatst bewerkt werden.
+                TextInput::make('subject')->label('Onderwerp')->required()->maxLength(255)
+                    ->live(onBlur: true),
                 TextInput::make('preheader')->label('Preheader')->maxLength(255)
-                    ->helperText('De regel die een mailbox naast het onderwerp toont.'),
+                    ->helperText('De regel die een mailbox naast het onderwerp toont.')
+                    ->live(onBlur: true),
                 TextInput::make('from_email')->label('Afzenderadres')->email()
                     ->helperText('Laat leeg om dat van de lijst te gebruiken.'),
                 TextInput::make('reply_to_email')->label('Antwoordadres')->email(),
@@ -129,13 +140,39 @@ class NewsletterCampaignResource extends Resource
                         ->columnSpanFull(),
                 ]),
                 Section::make('Voorbeeld')->schema([
+                    // Geen echt formuliervele: alleen om te kiezen als wie
+                    // de preview eruitziet. dehydrated(false) zodat dit nooit
+                    // meegaat bij het opslaan van de campagne — er bestaat
+                    // geen kolom voor, en dat hoort ook niet, want de keuze
+                    // is alleen voor tijdens het bewerken.
+                    Select::make('preview_subscriber_id')
+                        ->label('Voorbeeldcontact')
+                        ->placeholder('Voorbeeldwaarden')
+                        ->helperText('Toont de mail met de echte veldwaarden van dit contact. Leeg toont de terugvalwaarden.')
+                        ->searchable()
+                        ->live()
+                        ->dehydrated(false)
+                        ->options(fn (Get $get): array => $get('newsletter_list_id')
+                            ? NewsletterSubscriber::where('newsletter_list_id', $get('newsletter_list_id'))
+                                ->orderBy('email')
+                                ->pluck('email', 'id')
+                                ->all()
+                            : []),
                     Livewire::make(CampaignPreview::class, fn (Get $get, ?NewsletterCampaign $record): array => [
                         'campaignId' => $record?->id ?? 0,
                         'newsletterListId' => $get('newsletter_list_id'),
                         'subject' => $get('subject'),
                         'preheader' => $get('preheader'),
                         'blocks' => $get('blocks') ?? [],
-                    ])->key('campagne-preview'),
+                        'previewSubscriberId' => $get('preview_subscriber_id'),
+                    ])->key(fn (Get $get, ?NewsletterCampaign $record): string => 'campagne-preview-' . md5(json_encode([
+                        $record?->id,
+                        $get('newsletter_list_id'),
+                        $get('subject'),
+                        $get('preheader'),
+                        $get('blocks'),
+                        $get('preview_subscriber_id'),
+                    ]))),
                 ])->extraAttributes(['class' => 'sticky top-4']),
             ]),
         ]);
