@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dashed\DashedNewsletter\Campaigns;
 
+use Illuminate\Support\Facades\URL;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
@@ -137,6 +138,9 @@ class CampaignRenderer
     {
         $waarden = CampaignPersonalisation::valuesFor($recipient);
         $waarden['unsubscribe_url'] = UnsubscribeLink::for($recipient);
+        $waarden['web_version_url'] = $recipient->id
+            ? URL::signedRoute('dashed-newsletter.campaign.web-version', ['recipient' => $recipient->id])
+            : '';
 
         return preg_replace_callback(
             '/:(\w+):/',

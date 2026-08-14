@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Dashed\DashedNewsletter\Http\Controllers\UnsubscribeController;
 use Dashed\DashedNewsletter\Http\Controllers\TestUnsubscribeController;
+use Dashed\DashedNewsletter\Http\Controllers\CampaignWebVersionController;
 
 // Specifiekere route eerst en bewust op een eigen pad: Laravel matcht op
 // registratievolgorde, dus zou deze ná '/nieuwsbrief/afmelden/{recipient}'
@@ -24,3 +25,10 @@ Route::match(['get', 'post'], '/nieuwsbrief/afmelden/proefmail', TestUnsubscribe
 // sessie: er is geen formulier en geen flash-bericht nodig.
 Route::match(['get', 'post'], '/nieuwsbrief/afmelden/{recipient}', UnsubscribeController::class)
     ->name('dashed.frontend.newsletter.unsubscribe');
+
+// Ook buiten de web-groep: dezelfde reden als hierboven bij de afmeldroute.
+// De webversie toont de gepersonaliseerde tekst van één ontvanger, en de
+// ondertekende URL is daarvoor de enige bescherming. CSRF beschermt hier
+// niets (geen formulier, geen sessie) en zou in de weg zitten.
+Route::get('/nieuwsbrief/bekijken/{recipient}', CampaignWebVersionController::class)
+    ->name('dashed-newsletter.campaign.web-version');
