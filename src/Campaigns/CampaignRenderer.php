@@ -137,6 +137,37 @@ class CampaignRenderer
     public function substitute(string $html, NewsletterCampaignRecipient $recipient): string
     {
         $waarden = CampaignPersonalisation::valuesFor($recipient);
+
+        // Ontsnappen, want deze waarden komen niet van een beheerder. Een
+        // bezoeker vult zijn eigen contactvelden in via het aanmeldformulier
+        // (NewsletterListAPI::dispatch() -> subscribe() ->
+        // NewsletterFieldValue::writeValue(), zonder filtering opgeslagen), en
+        // die tekst belandt hier letterlijk in de HTML van de mail en in de
+        // srcdoc van de previewiframe. Zonder deze stap is een voornaam met een
+        // scripttag opgeslagen XSS op het domein van de webshop, en in de
+        // preview (srcdoc erft de origin van het beheerpaneel) een manier om in
+        // de sessie van een ingelogde beheerder te draaien.
+        //
+        // CampaignPersonalisation::valuesFor() mixt de echte contactwaarde en de
+        // terugvalwaarde (NewsletterField::default_value, door een beheerder
+        // gezet) door elkaar tot dezelfde array, dus hier is geen onderscheid
+        // meer te maken tussen de twee. Ook de terugvalwaarde gaat daarom door
+        // htmlspecialchars(): dat is de veilige kant om op te vergissen. Zet een
+        // beheerder per ongeluk "Jansen & Zn <BV>" als terugvalwaarde, dan zie
+        // je gewoon die tekst; het omgekeerde (bezoekersinvoer die per ongeluk
+        // ongefilterd blijft) is opgeslagen XSS.
+        foreach ($waarden as $sleutel => $waarde) {
+            $waarden[$sleutel] = htmlspecialchars($waarde, ENT_QUOTES, 'UTF-8');
+        }
+
+        // Na het ontsnappen toegevoegd: dit zijn URL's die deze klasse zelf
+        // opbouwt, geen contactinvoer. Ze horen in een href te staan, en
+        // htmlspecialchars() zou het &-teken tussen querystring-parameters
+        // (signedRoute voegt ?signature=... toe) veranderen in &amp;, wat in
+        // een href juist correct is maar de handtekening van de URL zelf niet
+        // aanpast. UrlSignatureController leest de URL zoals de browser hem
+        // ontsnapt terugstuurt, dus dit blijft werken; alleen was ontsnappen
+        // hier zinloos geweest omdat de waarde niet van een bezoeker komt.
         $waarden['unsubscribe_url'] = UnsubscribeLink::for($recipient);
         $waarden['web_version_url'] = $recipient->id
             ? URL::signedRoute('dashed-newsletter.campaign.web-version', ['recipient' => $recipient->id])
