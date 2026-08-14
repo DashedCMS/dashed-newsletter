@@ -90,11 +90,22 @@ class CampaignSender
         }
 
         try {
+            // rendered_html is het sjabloon van StartCampaignJob, één keer
+            // gerenderd voor de hele ronde; hier alleen nog de plaatshouders
+            // van deze ene ontvanger vervangen. De terugval op renderTemplate()
+            // is er voor een portie die draait terwijl rendered_html om wat
+            // voor reden dan ook leeg is, bijvoorbeeld bij een campagne die met
+            // de hand opnieuw in gang gezet is.
+            $html = app(CampaignRenderer::class)->substitute(
+                (string) ($campaign->rendered_html ?: app(CampaignRenderer::class)->renderTemplate($campaign)),
+                $recipient
+            );
+
             // Deze catch vangt ook een listener die pas ná de aflevering gooit,
             // waardoor een wél afgeleverde mail hier als mislukt geboekt kan
             // worden; niets verstuurt een failed-regel opnieuw, dus dat kost
             // alleen een verkeerd label, geen dubbele mail.
-            $sentMessage = Mail::to($recipient->email)->send(new NewsletterCampaignMail($campaign, $recipient));
+            $sentMessage = Mail::to($recipient->email)->send(new NewsletterCampaignMail($campaign, $recipient, $html));
         } catch (\Throwable $e) {
             $recipient->update([
                 'status' => NewsletterCampaignRecipient::STATUS_FAILED,

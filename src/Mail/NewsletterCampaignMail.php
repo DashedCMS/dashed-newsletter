@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Mail\Mailables\Envelope;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Campaigns\UnsubscribeLink;
+use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
 class NewsletterCampaignMail extends Mailable
@@ -18,6 +19,11 @@ class NewsletterCampaignMail extends Mailable
     public function __construct(
         public NewsletterCampaign $campaign,
         public NewsletterCampaignRecipient $recipient,
+        // Genoemd $renderedHtml en niet $html: Illuminate\Mail\Mailable
+        // declareert zelf al een protected $html-property (gevuld door
+        // Content::htmlString via de basisklasse), en een eigen public $html
+        // hier botst daarmee met een fatale "must not be defined"-fout.
+        public ?string $renderedHtml = null,
     ) {
     }
 
@@ -52,12 +58,11 @@ class NewsletterCampaignMail extends Mailable
 
     public function content(): Content
     {
+        // De HTML is al gerenderd en gepersonaliseerd door CampaignRenderer.
+        // Een eigen blade hier zou een tweede renderpad zijn, en dan gaan de
+        // preview en de verzending vroeg of laat uit elkaar lopen.
         return new Content(
-            view: 'dashed-newsletter::emails.campaign',
-            with: [
-                'campaign' => $this->campaign,
-                'unsubscribeUrl' => UnsubscribeLink::for($this->recipient),
-            ],
+            htmlString: $this->renderedHtml ?? app(CampaignRenderer::class)->render($this->campaign, $this->recipient),
         );
     }
 }

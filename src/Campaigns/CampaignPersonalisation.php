@@ -13,8 +13,11 @@ use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
  *
  * De sleutels zijn die van de velden van de lijst, plus e-mailadres. Heeft het
  * contact een veld niet ingevuld, dan geldt de terugvalwaarde van dat veld, en
- * anders een lege tekst. Wat er nooit gebeurt is dat ":voornaam:" letterlijk in
- * de mail blijft staan.
+ * anders een lege tekst. Dat dekt niet elke plaatshouder: verwijst
+ * ":voornaam:" naar een veld dat niet meer bestaat (verwijderd van de lijst),
+ * dan staat er hier geen sleutel meer voor, en laat
+ * CampaignRenderer::substitute() hem bewust ongemoeid. Blind alles vervangen
+ * wat op ":woord:" lijkt, zou ook echte tekst als "Om 10:00: kom" kapotmaken.
  */
 class CampaignPersonalisation
 {

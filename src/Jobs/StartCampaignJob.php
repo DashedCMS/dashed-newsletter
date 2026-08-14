@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Dashed\DashedNewsletter\Campaigns\CampaignRecipients;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
@@ -89,6 +90,14 @@ class StartCampaignJob implements ShouldQueue
         }
 
         $campaign->refresh();
+
+        // Eén keer renderen voor deze hele ronde. De plaatshouders blijven
+        // staan; CampaignSender vult ze per ontvanger in. Zou hier per
+        // ontvanger gerenderd worden, dan bevraagt een productblok de webshop
+        // net zo vaak als er ontvangers zijn.
+        $campaign->update([
+            'rendered_html' => app(CampaignRenderer::class)->renderTemplate($campaign),
+        ]);
 
         CampaignRecipients::build($campaign);
 
