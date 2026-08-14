@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Event;
 use Spatie\LaravelPackageTools\Package;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Dashed\DashedNewsletter\Mail\EmailBlocks\UnsubscribeBlock;
 use Dashed\DashedNewsletter\Listeners\LinkSubscriberToUser;
 use Dashed\DashedNewsletter\Listeners\SuppressBouncedAddress;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
@@ -86,6 +87,14 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
         cms()->builder('plugins', array_merge(cms()->builder('plugins') ?: [], [
             new DashedNewsletterPlugin(),
         ]));
+
+        // Guard voor het geval dit pakket ooit tegen een oudere dashed-core
+        // draait die emailBlock() nog niet kent. Zonder guard crasht de hele
+        // boot van de applicatie, en dat is erger dan een niet-geregistreerd
+        // afmeldblok.
+        if (method_exists(cms(), 'emailBlock')) {
+            cms()->emailBlock('unsubscribe', UnsubscribeBlock::class);
+        }
 
         cms()->registerSettingsPage(
             DashedNewsletterSettingsPage::class,
