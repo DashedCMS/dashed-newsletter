@@ -9,6 +9,7 @@ use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Grid;
 use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
 use Filament\Actions\DeleteAction;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Placeholder;
+use Filament\Schemas\Components\Livewire;
 use Dashed\DashedCore\Mail\EmailBlocks\EmailBlock;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -28,6 +30,7 @@ use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
+use Dashed\DashedNewsletter\Filament\Livewire\CampaignPreview;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\EditNewsletterCampaign;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\ListNewsletterCampaigns;
@@ -112,13 +115,28 @@ class NewsletterCampaignResource extends Resource
                     ->helperText('Laat leeg om dat van de lijst te gebruiken.'),
                 TextInput::make('reply_to_email')->label('Antwoordadres')->email(),
             ]),
-            Section::make('Inhoud')->columnSpanFull()->schema([
-                Builder::make('blocks')
-                    ->label('Inhoud')
-                    ->blocks(fn (): array => self::newsletterBlocks())
-                    ->collapsible()
-                    ->cloneable()
-                    ->columnSpanFull(),
+            Grid::make(2)->columnSpanFull()->schema([
+                Section::make('Inhoud')->schema([
+                    Builder::make('blocks')
+                        ->label('')
+                        ->blocks(fn (): array => self::newsletterBlocks())
+                        ->collapsible()
+                        ->cloneable()
+                        // onBlur en niet op elke toetsaanslag: bij een
+                        // nieuwsbrief van twintig blokken zou dat per aanslag
+                        // een volledige render van de mail betekenen.
+                        ->live(onBlur: true)
+                        ->columnSpanFull(),
+                ]),
+                Section::make('Voorbeeld')->schema([
+                    Livewire::make(CampaignPreview::class, fn (Get $get, ?NewsletterCampaign $record): array => [
+                        'campaignId' => $record?->id ?? 0,
+                        'newsletterListId' => $get('newsletter_list_id'),
+                        'subject' => $get('subject'),
+                        'preheader' => $get('preheader'),
+                        'blocks' => $get('blocks') ?? [],
+                    ])->key('campagne-preview'),
+                ])->extraAttributes(['class' => 'sticky top-4']),
             ]),
         ]);
     }
