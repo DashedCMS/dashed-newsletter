@@ -14,11 +14,14 @@ use Filament\Actions\DeleteAction;
 use Dashed\DashedCore\Classes\Sites;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Builder;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\ColorPicker;
 use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Models\NewsletterList;
+use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\EditNewsletterList;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\ListNewsletterLists;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\CreateNewsletterList;
@@ -72,6 +75,28 @@ class NewsletterListResource extends Resource
                 Toggle::make('notify_on_subscribe')->label('Melding bij aanmelding'),
                 Toggle::make('notify_on_unsubscribe')->label('Melding bij afmelding'),
             ])->columns(2),
+            Section::make('Vormgeving van de mail')
+                ->description('Laat leeg om de instellingen van de site aan te houden. De header staat boven elke campagne van deze lijst, de footer eronder.')
+                ->collapsed()
+                ->schema([
+                    mediaHelper()->field('mail_logo', 'Logo', false, false, true)
+                        ->helperText('Laat leeg om het logo uit de e-mailinstellingen te gebruiken.'),
+                    ColorPicker::make('mail_primary_color')->label('Primaire kleur'),
+                    ColorPicker::make('mail_text_color')->label('Tekstkleur op primaire kleur'),
+                    ColorPicker::make('mail_background_color')->label('Achtergrondkleur'),
+                    Builder::make('header_blocks')
+                        ->label('Header')
+                        ->blocks(fn (): array => NewsletterCampaignResource::newsletterBlocks())
+                        ->collapsible()
+                        ->columnSpanFull(),
+                    Builder::make('footer_blocks')
+                        ->label('Footer')
+                        ->helperText('Zet hier het afmeldblok als je de afmeldregel zelf wilt vormgeven. Doe je dat niet, dan komt er automatisch een standaardregel onderaan: zonder afmeldlink mag een nieuwsbrief niet verstuurd worden.')
+                        ->blocks(fn (): array => NewsletterCampaignResource::newsletterBlocks())
+                        ->collapsible()
+                        ->columnSpanFull(),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 
