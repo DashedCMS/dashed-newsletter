@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Campaigns;
 
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
 /**
  * Zet een campagne om in de HTML die verstuurd wordt.
@@ -110,5 +111,29 @@ class CampaignRenderer
         }
 
         return false;
+    }
+
+    public function render(NewsletterCampaign $campaign, NewsletterCampaignRecipient $recipient): string
+    {
+        return $this->substitute($this->renderTemplate($campaign), $recipient);
+    }
+
+    /**
+     * Vervangt de plaatshouders van één ontvanger in een al gerenderd sjabloon.
+     *
+     * Dit is bewust gescheiden van renderTemplate(): de verzendweg rendert één
+     * keer per ronde en roept dit per ontvanger aan. Een productblok bevraagt
+     * de webshop dus één keer en niet één keer per ontvanger.
+     */
+    public function substitute(string $html, NewsletterCampaignRecipient $recipient): string
+    {
+        $waarden = CampaignPersonalisation::valuesFor($recipient);
+        $waarden['unsubscribe_url'] = UnsubscribeLink::for($recipient);
+
+        return preg_replace_callback(
+            '/:(\w+):/',
+            fn (array $m): string => array_key_exists($m[1], $waarden) ? $waarden[$m[1]] : $m[0],
+            $html
+        );
     }
 }
