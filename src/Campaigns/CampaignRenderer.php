@@ -188,6 +188,27 @@ class CampaignRenderer
      */
     public function substitute(string $html, NewsletterCampaignRecipient $recipient): string
     {
+        return $this->vervang($html, $recipient, ontsnappen: true);
+    }
+
+    /**
+     * Zelfde vervanging, maar zonder te ontsnappen. Voor plekken die geen HTML
+     * zijn, en dat is er precies een: het onderwerp van de mail. Een
+     * mailheader is platte tekst, dus daar zou htmlspecialchars() een contact
+     * dat "Jan & Erna" heet als "Jan &amp; Erna" in de inbox zetten, en een
+     * naam als d'Angelo als d&#039;Angelo.
+     *
+     * Dit is veilig omdat een header geen HTML rendert. Gebruik dit nergens
+     * anders voor: alles wat wel in de HTML van de mail belandt hoort door
+     * substitute() te gaan.
+     */
+    public function substitutePlainText(string $tekst, NewsletterCampaignRecipient $recipient): string
+    {
+        return $this->vervang($tekst, $recipient, ontsnappen: false);
+    }
+
+    private function vervang(string $html, NewsletterCampaignRecipient $recipient, bool $ontsnappen): string
+    {
         $waarden = CampaignPersonalisation::valuesFor($recipient);
 
         // Ontsnappen, want deze waarden komen niet van een beheerder. Een
@@ -208,8 +229,10 @@ class CampaignRenderer
         // beheerder per ongeluk "Jansen & Zn <BV>" als terugvalwaarde, dan zie
         // je gewoon die tekst; het omgekeerde (bezoekersinvoer die per ongeluk
         // ongefilterd blijft) is opgeslagen XSS.
-        foreach ($waarden as $sleutel => $waarde) {
-            $waarden[$sleutel] = htmlspecialchars($waarde, ENT_QUOTES, 'UTF-8');
+        if ($ontsnappen) {
+            foreach ($waarden as $sleutel => $waarde) {
+                $waarden[$sleutel] = htmlspecialchars($waarde, ENT_QUOTES, 'UTF-8');
+            }
         }
 
         // Na het ontsnappen toegevoegd: dit zijn URL's die deze klasse zelf

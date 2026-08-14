@@ -41,7 +41,7 @@ class NewsletterCampaignMail extends Mailable
             // ":voornaam:" in de inhoud zet, doet dat net zo goed in het
             // onderwerp, en dat is de eerste regel die een ontvanger ziet.
             // Zonder dit staat er letterlijk "Hallo :voornaam:," in de inbox.
-            subject: app(CampaignRenderer::class)->substitute(
+            subject: app(CampaignRenderer::class)->substitutePlainText(
                 (string) $this->campaign->subject,
                 $this->recipient
             ),
