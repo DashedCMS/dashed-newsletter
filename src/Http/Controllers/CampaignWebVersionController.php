@@ -22,8 +22,22 @@ class CampaignWebVersionController
 
         abort_unless($ontvanger && $ontvanger->campaign, 404);
 
+        $campaign = $ontvanger->campaign;
+        $renderer = app(CampaignRenderer::class);
+
+        // Zelfde vorm als CampaignSender::send(): rendered_html is het
+        // sjabloon dat StartCampaignJob één keer voor de hele verzendronde
+        // vastlegde. Zonder dit hergebruik bouwt render() de campagne opnieuw
+        // op, en dan toont de webversie op woensdag andere producten dan de
+        // mail die maandag verstuurd is bij een campagne met een automatische
+        // productselectie. De terugval op renderTemplate() is er voor een
+        // campagne die nog geen rendered_html heeft (nooit verzonden, of een
+        // proefmail), zodat de webversielink daar niet leeg op uitkomt.
         return response(
-            app(CampaignRenderer::class)->render($ontvanger->campaign, $ontvanger)
+            $renderer->substitute(
+                (string) ($campaign->rendered_html ?: $renderer->renderTemplate($campaign)),
+                $ontvanger
+            )
         );
     }
 }
