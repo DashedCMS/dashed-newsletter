@@ -6,21 +6,22 @@ namespace Dashed\DashedNewsletter\Filament\Resources;
 
 use UnitEnum;
 use BackedEnum;
-use Filament\Actions\Action;
 use Filament\Tables\Table;
+use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
 use Filament\Actions\DeleteAction;
-use Illuminate\Auth\Access\Response;
 use Dashed\DashedCore\Classes\Sites;
+use Illuminate\Auth\Access\Response;
 use Filament\Forms\Components\Select;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Forms\Components\Builder;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Placeholder;
+use Dashed\DashedCore\Mail\EmailBlocks\EmailBlock;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Dashed\DashedNewsletter\Models\NewsletterList;
@@ -112,9 +113,30 @@ class NewsletterCampaignResource extends Resource
                 TextInput::make('reply_to_email')->label('Antwoordadres')->email(),
             ]),
             Section::make('Inhoud')->columnSpanFull()->schema([
-                RichEditor::make('content')->label('')->required()->columnSpanFull(),
+                Builder::make('blocks')
+                    ->label('Inhoud')
+                    ->blocks(fn (): array => self::newsletterBlocks())
+                    ->collapsible()
+                    ->cloneable()
+                    ->columnSpanFull(),
             ]),
         ]);
+    }
+
+    /**
+     * De blokken die in een nieuwsbrief mogen. De filter op de context is wat
+     * een bestelsamenvatting hier buiten houdt: die hoort in een
+     * bestelbevestiging en nergens anders.
+     *
+     * @return array<int, \Filament\Forms\Components\Builder\Block>
+     */
+    public static function newsletterBlocks(): array
+    {
+        return collect(cms()->emailBlocks())
+            ->filter(fn (string $class) => $class::inContext(EmailBlock::CONTEXT_NEWSLETTER))
+            ->map(fn (string $class) => $class::filamentBlock())
+            ->values()
+            ->all();
     }
 
     public static function table(Table $table): Table

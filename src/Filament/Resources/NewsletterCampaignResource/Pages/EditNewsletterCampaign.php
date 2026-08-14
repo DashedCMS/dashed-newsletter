@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages;
 
 use Filament\Actions\Action;
-use Illuminate\Support\Facades\Mail;
-use Filament\Forms\Components\Radio;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Radio;
+use Illuminate\Support\Facades\Mail;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
@@ -18,12 +18,36 @@ use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Mail\NewsletterCampaignMail;
-use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
+use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 
 class EditNewsletterCampaign extends EditRecord
 {
     protected static string $resource = NewsletterCampaignResource::class;
+
+    /**
+     * Een campagne van vóór dit project heeft alleen rich-editor-inhoud. Die
+     * verhuist hier eenmalig naar een tekstblok, zodat een redacteur er gewoon
+     * in verder kan. Het originele content-veld blijft staan tot het opslaan,
+     * zodat er niets verdwijnt als iemand het scherm zonder opslaan verlaat.
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        if (! empty($data['blocks'])) {
+            return $data;
+        }
+
+        if (blank($data['content'] ?? null)) {
+            return $data;
+        }
+
+        $data['blocks'] = [[
+            'type' => 'text',
+            'data' => ['body' => $data['content']],
+        ]];
+
+        return $data;
+    }
 
     protected function getHeaderActions(): array
     {
