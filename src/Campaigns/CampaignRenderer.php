@@ -47,10 +47,16 @@ class CampaignRenderer
         $headerBlocks = $list?->header_blocks ?? [];
         $footerBlocks = $list?->footer_blocks ?? [];
 
+        // Eén keer opgehaald en meegegeven aan renderBlocks() én
+        // heeftAfmeldblok(): dezelfde registry bepaalt in beide gevallen of
+        // een blok daadwerkelijk iets oplevert. Zie het commentaar bij
+        // heeftAfmeldblok() voor waarom dat moet samenvallen.
+        $registry = cms()->emailBlocks();
+
         $blocks = array_merge(
-            $this->renderBlocks($headerBlocks, $context),
-            $this->renderCampaignBody($campaign, $context),
-            $this->renderBlocks($footerBlocks, $context),
+            $this->renderBlocks($headerBlocks, $context, $registry),
+            $this->renderCampaignBody($campaign, $context, $registry),
+            $this->renderBlocks($footerBlocks, $context, $registry),
         );
 
         // brandingColors()['logo'] is meestal een media-id (mediaHelper()->
@@ -86,20 +92,20 @@ class CampaignRenderer
             // afmeldblok net zo goed daar staan. Kijk dan alleen naar
             // $footerBlocks, dan mist dat geval en plakt de standaardregel
             // hieronder er een tweede afmeldlink bij.
-            'hasUnsubscribeBlock' => $this->heeftAfmeldblok($headerBlocks)
-                || $this->heeftAfmeldblok($campaign->blocks ?? [])
-                || $this->heeftAfmeldblok($footerBlocks),
+            'hasUnsubscribeBlock' => $this->heeftAfmeldblok($headerBlocks, $registry)
+                || $this->heeftAfmeldblok($campaign->blocks ?? [], $registry)
+                || $this->heeftAfmeldblok($footerBlocks, $registry),
         ])->render();
     }
 
     /**
      * @param array<int, array<string, mixed>> $blocks
      * @param array<string, mixed> $context
+     * @param array<string, class-string> $registry
      * @return array<int, string>
      */
-    private function renderBlocks(array $blocks, array $context): array
+    private function renderBlocks(array $blocks, array $context, array $registry): array
     {
-        $registry = cms()->emailBlocks();
         $gerenderd = [];
 
         foreach ($blocks as $block) {
@@ -119,14 +125,15 @@ class CampaignRenderer
 
     /**
      * @param array<string, mixed> $context
+     * @param array<string, class-string> $registry
      * @return array<int, string>
      */
-    private function renderCampaignBody(NewsletterCampaign $campaign, array $context): array
+    private function renderCampaignBody(NewsletterCampaign $campaign, array $context, array $registry): array
     {
         $blocks = $campaign->blocks ?? [];
 
         if ($blocks !== []) {
-            return $this->renderBlocks($blocks, $context);
+            return $this->renderBlocks($blocks, $context, $registry);
         }
 
         // Campagnes van vóór dit project hebben alleen rich-editor-inhoud.
@@ -140,12 +147,26 @@ class CampaignRenderer
     }
 
     /**
+     * Of dit blokkenrijtje daadwerkelijk een afmeldlink oplevert.
+     *
+     * Bewust niet alleen op de tekst 'unsubscribe' in de blokdata afgaan: dat
+     * is een vlag, geen garantie. Staat 'unsubscribe' wel in de data maar
+     * niet (meer) in $registry, dan rendert renderBlocks() dat blok niet
+     * (zie de guard daar), en zou de vlag alsnog de standaardregel in
+     * shell.blade.php onderdrukken: een nieuwsbrief zonder afmeldlink,
+     * precies wat UnsubscribeBlock's eigen klassecommentaar uitsluit. Door
+     * hier dezelfde $registry-check te doen als renderBlocks() zelf gebruikt,
+     * volgt de vlag wat er werkelijk gerenderd wordt.
+     *
      * @param array<int, array<string, mixed>> $blocks
+     * @param array<string, class-string> $registry
      */
-    private function heeftAfmeldblok(array $blocks): bool
+    private function heeftAfmeldblok(array $blocks, array $registry): bool
     {
         foreach ($blocks as $block) {
-            if (($block['type'] ?? null) === 'unsubscribe') {
+            $type = $block['type'] ?? null;
+
+            if ($type === 'unsubscribe' && isset($registry[$type])) {
                 return true;
             }
         }
