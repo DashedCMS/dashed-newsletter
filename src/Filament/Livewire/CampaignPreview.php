@@ -93,6 +93,22 @@ class CampaignPreview extends Component
      * RichEditorStateCast::get() bij isJson() false), dus dit is geen tweede
      * renderpad, alleen een vertaling van formaat.
      *
+     * Bewust ->toUnsafeHtml() en niet ->toHtml(): dat laatste haalt er
+     * Symfony's HtmlSanitizer overheen, en RichEditorStateCast::get() doet
+     * dat bij het opslaan niet (regel 57 daar roept $editor->getHtml()
+     * rechtstreeks aan, zonder sanitize-stap). ->toUnsafeHtml() volgt exact
+     * dezelfde methodeketen als opslaan (getEditor()->getHTML(), met
+     * dezelfde no-op process*-stappen zolang er geen custom blocks,
+     * bestandsbijlagen of mentions op dit veld staan), dus preview en
+     * opslagpad geven hier hetzelfde terug. Met ->toHtml() zou een
+     * randgeval dat de sanitizer aanpast (bijvoorbeeld een script-tag die
+     * een redacteur zelf niet had moeten kunnen invoegen, maar die de
+     * RichEditor toch doorlaat) in de preview onzichtbaar worden terwijl
+     * hij gewoon verstuurd wordt: precies het soort afdrijven dat deze taak
+     * moet uitsluiten. De inhoud komt van een ingelogde beheerder, niet van
+     * een bezoeker, dus dezelfde vertrouwensgrens als het opslagpad is hier
+     * van toepassing.
+     *
      * @param array<int, array<string, mixed>> $blocks
      * @return array<int, array<string, mixed>>
      */
@@ -108,7 +124,7 @@ class CampaignPreview extends Component
                 // array met 'type' => 'doc'. Andere veldwaarden (platte
                 // tekst, een array van links) hebben die vorm niet.
                 if (is_array($waarde) && ($waarde['type'] ?? null) === 'doc') {
-                    $block['data'][$veld] = RichContentRenderer::make($waarde)->toHtml();
+                    $block['data'][$veld] = RichContentRenderer::make($waarde)->toUnsafeHtml();
                 }
             }
         }
