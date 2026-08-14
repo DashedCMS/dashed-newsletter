@@ -33,6 +33,15 @@ class CampaignRenderer
             'textColor' => $kleuren['text'],
             'backgroundColor' => $kleuren['background'],
             'siteName' => $list?->name,
+            // Voor blokken die zelf iets opzoeken (artikelen, producten,
+            // kortingscodes): zonder deze sleutel valt zo'n blok terug op
+            // Sites::getActive(), en die geeft in een queue-job geen actieve
+            // site terug (geen HTTP-request om er een af te leiden), maar de
+            // eerst geconfigureerde site. Op een installatie met meer dan één
+            // site komt dan de content van de verkeerde site in de mail.
+            // effectiveSiteId() is dezelfde afleiding die CampaignRecipients
+            // en CampaignSender al gebruiken voor de blokkadelijst.
+            'siteId' => $campaign->effectiveSiteId(),
         ];
 
         $headerBlocks = $list?->header_blocks ?? [];
