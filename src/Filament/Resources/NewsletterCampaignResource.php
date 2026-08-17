@@ -16,6 +16,7 @@ use Filament\Actions\DeleteAction;
 use Dashed\DashedCore\Classes\Sites;
 use Illuminate\Auth\Access\Response;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Components\Builder;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
@@ -158,8 +159,26 @@ class NewsletterCampaignResource extends Resource
                                 ->pluck('email', 'id')
                                 ->all()
                             : []),
+                    // De breedte hoort hier en niet in de preview zelf. De
+                    // component wordt opnieuw opgebouwd zodra er iets in het
+                    // formulier verandert, en een veld dat de focus verliest
+                    // doet dat al. Stond de breedte in de component, dan was
+                    // hij meteen weer terug op breed en leek de knop niets te
+                    // doen. Als formulierveld overleeft hij die herbouw, net
+                    // als het voorbeeldcontact hierboven.
+                    ToggleButtons::make('preview_breedte')
+                        ->label('Weergave')
+                        ->inline()
+                        ->default('breed')
+                        ->live()
+                        ->dehydrated(false)
+                        ->options([
+                            'breed' => 'Breed',
+                            'smal' => 'Telefoon',
+                        ]),
                     Livewire::make(CampaignPreview::class, fn (Get $get, ?NewsletterCampaign $record): array => [
                         'campaignId' => $record?->id ?? 0,
+                        'breedte' => $get('preview_breedte') ?: 'breed',
                         'newsletterListId' => $get('newsletter_list_id'),
                         'subject' => $get('subject'),
                         'preheader' => $get('preheader'),
@@ -172,6 +191,7 @@ class NewsletterCampaignResource extends Resource
                         $get('preheader'),
                         $get('blocks'),
                         $get('preview_subscriber_id'),
+                        $get('preview_breedte'),
                     ]))),
                 ])->extraAttributes(['class' => 'sticky top-4']),
             ]),
