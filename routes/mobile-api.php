@@ -12,6 +12,10 @@ Route::prefix('api/v1')
         Route::get('newsletter/lists', [NewsletterAudienceController::class, 'lists'])->middleware('ability:newsletter.read');
         Route::get('newsletter/lists/{list}/subscribers', [NewsletterAudienceController::class, 'subscribers'])->whereNumber('list')->middleware('ability:newsletter.read');
         Route::get('newsletter/subscribers/{subscriber}', [NewsletterAudienceController::class, 'subscriber'])->whereNumber('subscriber')->middleware('ability:newsletter.read');
+        Route::post('newsletter/lists/{list}/subscribers', [NewsletterAudienceController::class, 'addSubscriber'])->whereNumber('list')->middleware('ability:newsletter.write');
+        Route::post('newsletter/subscribers/{subscriber}/unsubscribe', [NewsletterAudienceController::class, 'unsubscribe'])->whereNumber('subscriber')->middleware('ability:newsletter.write');
+        Route::get('newsletter/suppressions', [NewsletterAudienceController::class, 'suppressions'])->middleware('ability:newsletter.read');
+        Route::get('newsletter/segments', [NewsletterAudienceController::class, 'segments'])->middleware('ability:newsletter.read');
         Route::get('newsletter/campaigns', [NewsletterCampaignController::class, 'index'])->middleware('ability:newsletter.read');
         Route::post('newsletter/campaigns', [NewsletterCampaignController::class, 'store'])->middleware('ability:newsletter.write');
         Route::post('newsletter/campaigns/ai/compose', [NewsletterCampaignController::class, 'aiCompose'])->middleware('ability:newsletter.write');

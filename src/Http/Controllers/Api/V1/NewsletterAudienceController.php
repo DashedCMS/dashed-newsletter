@@ -9,7 +9,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Dashed\DashedCore\Classes\Sites;
 use Dashed\DashedNewsletter\Models\NewsletterList;
+use Dashed\DashedNewsletter\Facades\Newsletter;
+use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
+use Dashed\DashedNewsletter\Models\NewsletterSuppression;
+use Dashed\DashedNewsletter\Exceptions\InvalidEmailException;
 
 class NewsletterAudienceController extends Controller
 {
@@ -82,5 +86,63 @@ class NewsletterAudienceController extends Controller
             'fields' => $s->fieldValues->map(fn ($f) => ['key' => $f->field?->key ?? (string) $f->newsletter_field_id, 'value' => $f->value])->all(),
             'events' => $s->events->map(fn ($e) => ['type' => $e->type, 'created_at' => optional($e->created_at)->toIso8601String()])->all(),
         ]]);
+    }
+
+    public function addSubscriber(Request $request, int $list): JsonResponse
+    {
+        $model = $this->findList($list);
+
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'fields' => ['sometimes', 'array'],
+        ]);
+
+        try {
+            $subscriber = Newsletter::subscribe($data['email'], $model, $data['fields'] ?? [], source: 'app');
+        } catch (InvalidEmailException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return $this->subscriber($request, $subscriber->id)->setStatusCode(201);
+    }
+
+    public function unsubscribe(Request $request, int $subscriber): JsonResponse
+    {
+        $s = $this->findSubscriber($subscriber);
+        Newsletter::changeStatus($s, NewsletterSubscriber::STATUS_UNSUBSCRIBED, source: 'app');
+
+        return $this->subscriber($request, $s->id);
+    }
+
+    public function suppressions(Request $request): JsonResponse
+    {
+        $page = NewsletterSuppression::where('site_id', Sites::getActive())->latest()->paginate(30);
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn (NewsletterSuppression $x) => [
+                'id' => $x->id,
+                'email' => $x->email,
+                'reason' => $x->reason,
+                'source' => $x->source,
+                'created_at' => optional($x->created_at)->toIso8601String(),
+            ])->all(),
+            'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage()],
+        ]);
+    }
+
+    public function segments(Request $request): JsonResponse
+    {
+        $segments = NewsletterSegment::whereHas('list', fn ($q) => $q->where('site_id', Sites::getActive()))
+            ->with('list:id,name')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => $segments->map(fn (NewsletterSegment $sg) => [
+                'id' => $sg->id,
+                'name' => $sg->name,
+                'list_name' => $sg->list?->name,
+            ])->all(),
+        ]);
     }
 }
