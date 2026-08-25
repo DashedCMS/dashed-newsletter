@@ -57,6 +57,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews('dashed-newsletter')
             ->hasRoute('frontend')
+            ->hasRoute('mobile-api')
             ->hasCommand(\Dashed\DashedNewsletter\Commands\SendScheduledCampaigns::class);
     }
 
@@ -142,5 +143,23 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 ],
             ])
         );
+
+        if (class_exists(\Dashed\DashedMobileApi\MobileApiRegistry::class)) {
+            /** @var \Dashed\DashedMobileApi\MobileApiRegistry $mobileApi */
+            $mobileApi = $this->app->make(\Dashed\DashedMobileApi\MobileApiRegistry::class);
+
+            $version = \Composer\InstalledVersions::isInstalled('dashed/dashed-newsletter')
+                ? \Composer\InstalledVersions::getPrettyVersion('dashed/dashed-newsletter')
+                : null;
+            $mobileApi->registerCapability('newsletter', ['version' => $version]);
+
+            $mobileApi->registerAbilities(['newsletter.read', 'newsletter.write']);
+            $mobileApi->registerRoleAbilities([
+                'eigenaar'      => ['newsletter.read', 'newsletter.write'],
+                'admin'         => ['newsletter.read', 'newsletter.write'],
+                'shopbeheerder' => ['newsletter.read', 'newsletter.write'],
+                'read-only'     => ['newsletter.read'],
+            ]);
+        }
     }
 }
