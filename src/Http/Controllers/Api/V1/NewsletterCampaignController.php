@@ -9,8 +9,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\URL;
 use Dashed\DashedCore\Classes\Sites;
+use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
+use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
 
 class NewsletterCampaignController extends Controller
 {
@@ -127,6 +130,47 @@ class NewsletterCampaignController extends Controller
         ]);
 
         $c->fill($data)->save();
+
+        return $this->show($request, $c->id);
+    }
+
+    public function send(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+
+        if ($problem = CampaignGuard::problem($c)) {
+            return response()->json(['success' => false, 'message' => $problem], 422);
+        }
+
+        StartCampaignJob::dispatch($c->id);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function schedule(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+
+        if ($problem = CampaignGuard::problem($c)) {
+            return response()->json(['success' => false, 'message' => $problem], 422);
+        }
+
+        $data = $request->validate([
+            'scheduled_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        $c->scheduled_at = $data['scheduled_at'];
+        $c->status = NewsletterCampaign::STATUS_SCHEDULED;
+        $c->save();
+
+        return $this->show($request, $c->id);
+    }
+
+    public function cancel(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+
+        CampaignCanceller::cancel($c);
 
         return $this->show($request, $c->id);
     }
