@@ -16,6 +16,7 @@ use Dashed\DashedNewsletter\Ai\CampaignBriefing;
 use Dashed\DashedNewsletter\Ai\CampaignComposer;
 use Dashed\DashedNewsletter\Ai\Exceptions\AiGenerationFailedException;
 use Dashed\DashedCore\Classes\ContentStudio\BlockCatalog;
+use Dashed\DashedNewsletter\Facades\Newsletter;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
@@ -260,6 +261,14 @@ class NewsletterCampaignController extends Controller
         $briefing = CampaignBriefing::fromFormData($data['briefing']);
         $catalog = (new BlockCatalog())->fromBlocks(NewsletterCampaignResource::newsletterBlocks());
 
+        // newsletter_list_id is een NOT NULL FK: zonder gekozen lijst valt terug
+        // op de standaardlijst van de site, en zonder die instelling hoort er
+        // een nette 422 te komen in plaats van een database-fout.
+        $listId = $data['newsletter_list_id'] ?? Newsletter::defaultList()?->id;
+        if (! $listId) {
+            return response()->json(['success' => false, 'message' => 'Kies een lijst of stel een standaardlijst in.'], 422);
+        }
+
         try {
             $draft = app(CampaignComposer::class)->compose($plan, $briefing, $catalog, trim((string) ($data['adjustment'] ?? '')));
         } catch (AiGenerationFailedException $e) {
@@ -273,7 +282,7 @@ class NewsletterCampaignController extends Controller
             'preheader' => $draft->preheader,
             'blocks' => $draft->blocks,
             'status' => NewsletterCampaign::STATUS_CONCEPT,
-            'newsletter_list_id' => $data['newsletter_list_id'] ?? null,
+            'newsletter_list_id' => $listId,
             'newsletter_segment_id' => $data['newsletter_segment_id'] ?? null,
         ]);
 
@@ -289,12 +298,20 @@ class NewsletterCampaignController extends Controller
             'newsletter_list_id' => ['sometimes', 'nullable', 'integer'],
         ]);
 
+        // newsletter_list_id is een NOT NULL FK: zonder gekozen lijst valt terug
+        // op de standaardlijst van de site, en zonder die instelling hoort er
+        // een nette 422 te komen in plaats van een database-fout.
+        $listId = $data['newsletter_list_id'] ?? Newsletter::defaultList()?->id;
+        if (! $listId) {
+            return response()->json(['success' => false, 'message' => 'Kies een lijst of stel een standaardlijst in.'], 422);
+        }
+
         $campaign = NewsletterCampaign::create([
             'site_id' => Sites::getActive(),
             'name' => $data['name'],
             'subject' => $data['subject'] ?? '',
             'status' => NewsletterCampaign::STATUS_CONCEPT,
-            'newsletter_list_id' => $data['newsletter_list_id'] ?? null,
+            'newsletter_list_id' => $listId,
         ]);
 
         return $this->show($request, $campaign->id)->setStatusCode(201);
