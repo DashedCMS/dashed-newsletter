@@ -15,4 +15,6 @@ Route::prefix('api/v1')
         Route::post('newsletter/campaigns/{campaign}/send', [NewsletterCampaignController::class, 'send'])->whereNumber('campaign')->middleware('ability:newsletter.write');
         Route::post('newsletter/campaigns/{campaign}/schedule', [NewsletterCampaignController::class, 'schedule'])->whereNumber('campaign')->middleware('ability:newsletter.write');
         Route::post('newsletter/campaigns/{campaign}/cancel', [NewsletterCampaignController::class, 'cancel'])->whereNumber('campaign')->middleware('ability:newsletter.write');
+        Route::get('newsletter/ai/available', [NewsletterCampaignController::class, 'aiAvailable'])->middleware('ability:newsletter.read');
+        Route::post('newsletter/campaigns/ai/plan', [NewsletterCampaignController::class, 'aiPlan'])->middleware('ability:newsletter.write');
     });

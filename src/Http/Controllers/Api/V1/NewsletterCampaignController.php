@@ -8,7 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\URL;
+use Dashed\DashedAi\Facades\Ai;
 use Dashed\DashedCore\Classes\Sites;
+use Dashed\DashedNewsletter\Ai\CampaignPlanner;
+use Dashed\DashedNewsletter\Ai\CampaignBriefing;
+use Dashed\DashedNewsletter\Ai\Exceptions\AiGenerationFailedException;
 use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
@@ -191,5 +195,36 @@ class NewsletterCampaignController extends Controller
         }
 
         return $this->show($request, $c->id);
+    }
+
+    /** Is er een AI-provider gekoppeld (bepaalt of de app de AI-knop toont)? */
+    public function aiAvailable(): JsonResponse
+    {
+        return response()->json(['available' => class_exists(Ai::class) && Ai::hasProvider()]);
+    }
+
+    /** Fase 1: laat de AI een opbouw (producten/artikelen/outline) voorstellen. Slaat niets op. */
+    public function aiPlan(Request $request): JsonResponse
+    {
+        if (! (class_exists(Ai::class) && Ai::hasProvider())) {
+            return response()->json(['success' => false, 'message' => 'Er is geen AI-provider gekoppeld.'], 422);
+        }
+
+        $data = $request->validate([
+            'audience' => ['required', 'string'],
+            'occasion' => ['required', 'string'],
+            'promote' => ['required', 'string'],
+            'length' => ['required', 'string'],
+            'instruction' => ['sometimes', 'nullable', 'string'],
+        ]);
+        $data['instruction'] = $data['instruction'] ?? '';
+
+        try {
+            $plan = app(CampaignPlanner::class)->plan(CampaignBriefing::fromFormData($data), Sites::getActive());
+        } catch (AiGenerationFailedException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['plan' => $plan->toArray()]);
     }
 }
