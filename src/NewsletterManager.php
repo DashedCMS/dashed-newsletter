@@ -8,13 +8,15 @@ use Illuminate\Support\Facades\DB;
 use Dashed\DashedCore\Classes\Sites;
 use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Import\ImportResult;
+use Dashed\DashedNewsletter\Ai\SearchToolRegistry;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Import\ImportedContact;
-use Dashed\DashedNewsletter\Exceptions\InvalidEmailException;
+use Dashed\DashedNewsletter\Ai\Contracts\SearchTool;
 use Dashed\DashedNewsletter\Models\NewsletterConsent;
 use Dashed\DashedNewsletter\Models\NewsletterFieldValue;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Events\NewsletterSubscribedEvent;
+use Dashed\DashedNewsletter\Exceptions\InvalidEmailException;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriberEvent;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
 use Dashed\DashedNewsletter\Events\NewsletterUnsubscribedEvent;
@@ -33,6 +35,24 @@ class NewsletterManager
     public function segmentConditions(): array
     {
         return app(SegmentConditionRegistry::class)->all();
+    }
+
+    /**
+     * Een zoekfunctie aanmelden voor fase 1 van de AI-generator. Zelfde
+     * gedachte als registerSegmentCondition(): dit pakket weet niet welke
+     * modules er zijn.
+     */
+    public function registerSearchTool(SearchTool $tool): self
+    {
+        app(SearchToolRegistry::class)->register($tool);
+
+        return $this;
+    }
+
+    /** @return array<string, SearchTool> */
+    public function searchTools(): array
+    {
+        return app(SearchToolRegistry::class)->all();
     }
 
     /** @var array<int, callable> */

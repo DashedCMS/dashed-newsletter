@@ -10,10 +10,10 @@ use Spatie\LaravelPackageTools\Package;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Dashed\DashedNewsletter\Mail\EmailBlocks\SocialBlock;
-use Dashed\DashedNewsletter\Mail\EmailBlocks\UnsubscribeBlock;
-use Dashed\DashedNewsletter\Mail\EmailBlocks\WebVersionBlock;
 use Dashed\DashedNewsletter\Listeners\LinkSubscriberToUser;
 use Dashed\DashedNewsletter\Listeners\SuppressBouncedAddress;
+use Dashed\DashedNewsletter\Mail\EmailBlocks\WebVersionBlock;
+use Dashed\DashedNewsletter\Mail\EmailBlocks\UnsubscribeBlock;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
 use Dashed\DashedNewsletter\Classes\FormApis\NewsletterListAPI;
 use Dashed\DashedNewsletter\Segments\Conditions\FieldCondition;
@@ -64,6 +64,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(SegmentConditionRegistry::class);
         $this->app->singleton('newsletter', fn () => new NewsletterManager());
+        $this->app->singleton(\Dashed\DashedNewsletter\Ai\SearchToolRegistry::class);
     }
 
     public function packageBooted(): void

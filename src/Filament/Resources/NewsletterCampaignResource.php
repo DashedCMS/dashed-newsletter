@@ -9,31 +9,34 @@ use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Grid;
 use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
 use Filament\Actions\DeleteAction;
 use Dashed\DashedCore\Classes\Sites;
 use Illuminate\Auth\Access\Response;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Builder;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\Placeholder;
 use Filament\Schemas\Components\Livewire;
-use Dashed\DashedCore\Mail\EmailBlocks\EmailBlock;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Dashed\DashedCore\Mail\EmailBlocks\EmailBlock;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
-use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
+use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Filament\Livewire\CampaignPreview;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
+use Dashed\DashedNewsletter\Filament\Actions\GenerateCampaignWithAiAction;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\EditNewsletterCampaign;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\ListNewsletterCampaigns;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\CreateNewsletterCampaign;
@@ -129,6 +132,15 @@ class NewsletterCampaignResource extends Resource
             ]),
             Grid::make(2)->columnSpanFull()->schema([
                 Section::make('Inhoud')->schema([
+                    // Het voorstel van fase 1, onderweg naar fase 2. Geen kolom
+                    // en dehydrated(false): het bestaat alleen tijdens het
+                    // bewerken, precies als preview_subscriber_id hieronder.
+                    Hidden::make('ai_plan')->dehydrated(false),
+                    Hidden::make('ai_briefing')->dehydrated(false),
+                    Actions::make([
+                        GenerateCampaignWithAiAction::plan(),
+                        GenerateCampaignWithAiAction::apply(),
+                    ])->columnSpanFull(),
                     Builder::make('blocks')
                         ->label('')
                         ->blocks(fn (): array => self::newsletterBlocks())
