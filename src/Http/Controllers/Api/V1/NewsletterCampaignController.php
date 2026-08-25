@@ -10,9 +10,13 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\URL;
 use Dashed\DashedAi\Facades\Ai;
 use Dashed\DashedCore\Classes\Sites;
+use Dashed\DashedNewsletter\Ai\CampaignPlan;
 use Dashed\DashedNewsletter\Ai\CampaignPlanner;
 use Dashed\DashedNewsletter\Ai\CampaignBriefing;
+use Dashed\DashedNewsletter\Ai\CampaignComposer;
 use Dashed\DashedNewsletter\Ai\Exceptions\AiGenerationFailedException;
+use Dashed\DashedCore\Classes\ContentStudio\BlockCatalog;
+use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
@@ -226,5 +230,73 @@ class NewsletterCampaignController extends Controller
         }
 
         return response()->json(['plan' => $plan->toArray()]);
+    }
+
+    /** Fase 2: schrijf de nieuwsbrief o.b.v. het (gefilterde) plan en maak een concept aan. */
+    public function aiCompose(Request $request): JsonResponse
+    {
+        if (! (class_exists(Ai::class) && Ai::hasProvider())) {
+            return response()->json(['success' => false, 'message' => 'Er is geen AI-provider gekoppeld.'], 422);
+        }
+
+        $data = $request->validate([
+            'plan' => ['required', 'array'],
+            'briefing' => ['required', 'array'],
+            'adjustment' => ['sometimes', 'nullable', 'string'],
+            'keep_product_ids' => ['sometimes', 'array'],
+            'keep_article_ids' => ['sometimes', 'array'],
+            'newsletter_list_id' => ['sometimes', 'nullable', 'integer'],
+            'newsletter_segment_id' => ['sometimes', 'nullable', 'integer'],
+        ]);
+
+        $plan = CampaignPlan::fromArray($data['plan']);
+        if (array_key_exists('keep_product_ids', $data) || array_key_exists('keep_article_ids', $data)) {
+            $plan = $plan->only(
+                array_map('intval', $data['keep_product_ids'] ?? $plan->productIds()),
+                array_map('intval', $data['keep_article_ids'] ?? $plan->articleIds()),
+            );
+        }
+
+        $briefing = CampaignBriefing::fromFormData($data['briefing']);
+        $catalog = (new BlockCatalog())->fromBlocks(NewsletterCampaignResource::newsletterBlocks());
+
+        try {
+            $draft = app(CampaignComposer::class)->compose($plan, $briefing, $catalog, trim((string) ($data['adjustment'] ?? '')));
+        } catch (AiGenerationFailedException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        $campaign = NewsletterCampaign::create([
+            'site_id' => Sites::getActive(),
+            'name' => $draft->name,
+            'subject' => $draft->subject,
+            'preheader' => $draft->preheader,
+            'blocks' => $draft->blocks,
+            'status' => NewsletterCampaign::STATUS_CONCEPT,
+            'newsletter_list_id' => $data['newsletter_list_id'] ?? null,
+            'newsletter_segment_id' => $data['newsletter_segment_id'] ?? null,
+        ]);
+
+        return $this->show($request, $campaign->id);
+    }
+
+    /** Maak een leeg concept aan (voor wie zonder AI wil starten). */
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'subject' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'newsletter_list_id' => ['sometimes', 'nullable', 'integer'],
+        ]);
+
+        $campaign = NewsletterCampaign::create([
+            'site_id' => Sites::getActive(),
+            'name' => $data['name'],
+            'subject' => $data['subject'] ?? '',
+            'status' => NewsletterCampaign::STATUS_CONCEPT,
+            'newsletter_list_id' => $data['newsletter_list_id'] ?? null,
+        ]);
+
+        return $this->show($request, $campaign->id)->setStatusCode(201);
     }
 }

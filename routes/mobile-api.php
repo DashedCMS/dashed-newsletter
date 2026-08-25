@@ -9,6 +9,8 @@ Route::prefix('api/v1')
     ->middleware(['auth:sanctum', 'mobile.site'])
     ->group(function (): void {
         Route::get('newsletter/campaigns', [NewsletterCampaignController::class, 'index'])->middleware('ability:newsletter.read');
+        Route::post('newsletter/campaigns', [NewsletterCampaignController::class, 'store'])->middleware('ability:newsletter.write');
+        Route::post('newsletter/campaigns/ai/compose', [NewsletterCampaignController::class, 'aiCompose'])->middleware('ability:newsletter.write');
         Route::get('newsletter/campaigns/{campaign}', [NewsletterCampaignController::class, 'show'])->whereNumber('campaign')->middleware('ability:newsletter.read');
         Route::get('newsletter/campaigns/{campaign}/preview', [NewsletterCampaignController::class, 'preview'])->whereNumber('campaign')->middleware('ability:newsletter.read');
         Route::patch('newsletter/campaigns/{campaign}', [NewsletterCampaignController::class, 'update'])->whereNumber('campaign')->middleware('ability:newsletter.write');
