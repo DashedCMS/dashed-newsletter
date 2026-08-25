@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Dashed\DashedNewsletter\Http\Controllers\Api\V1\NewsletterCampaignController;
+use Dashed\DashedNewsletter\Http\Controllers\Api\V1\NewsletterAudienceController;
 
 Route::prefix('api/v1')
     ->middleware(['auth:sanctum', 'mobile.site'])
     ->group(function (): void {
+        Route::get('newsletter/lists', [NewsletterAudienceController::class, 'lists'])->middleware('ability:newsletter.read');
+        Route::get('newsletter/lists/{list}/subscribers', [NewsletterAudienceController::class, 'subscribers'])->whereNumber('list')->middleware('ability:newsletter.read');
+        Route::get('newsletter/subscribers/{subscriber}', [NewsletterAudienceController::class, 'subscriber'])->whereNumber('subscriber')->middleware('ability:newsletter.read');
         Route::get('newsletter/campaigns', [NewsletterCampaignController::class, 'index'])->middleware('ability:newsletter.read');
         Route::post('newsletter/campaigns', [NewsletterCampaignController::class, 'store'])->middleware('ability:newsletter.write');
         Route::post('newsletter/campaigns/ai/compose', [NewsletterCampaignController::class, 'aiCompose'])->middleware('ability:newsletter.write');
