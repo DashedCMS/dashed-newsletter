@@ -20,6 +20,7 @@ use Dashed\DashedNewsletter\Facades\Newsletter;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
@@ -65,6 +66,28 @@ class NewsletterCampaignController extends Controller
     private function findForSite(int $campaign): NewsletterCampaign
     {
         return NewsletterCampaign::where('site_id', Sites::getActive())->findOrFail($campaign);
+    }
+
+    /**
+     * Bewaakt dat een expliciet meegegeven newsletter_list_id ook echt bij de
+     * actieve site hoort. Zonder deze check kan een newsletter.write-operator
+     * op site A een lijst-id van site B doorgeven en zo een campagne aan de
+     * verkeerde lijst koppelen. Een via Newsletter::defaultList() opgehaalde
+     * default hoeft hier niet doorheen: die is al site-scoped.
+     */
+    private function assertListOnSite(?int $listId): ?JsonResponse
+    {
+        if ($listId === null) {
+            return null;
+        }
+
+        $onSite = NewsletterList::where('site_id', Sites::getActive())->whereKey($listId)->exists();
+
+        if (! $onSite) {
+            return response()->json(['success' => false, 'message' => 'Onbekende lijst voor deze site.'], 422);
+        }
+
+        return null;
     }
 
     /** Ontvangers geteld per verzendstatus. */
@@ -137,6 +160,12 @@ class NewsletterCampaignController extends Controller
             'newsletter_segment_id' => ['sometimes', 'nullable', 'integer'],
             'scheduled_at' => ['sometimes', 'nullable', 'date'],
         ]);
+
+        if (array_key_exists('newsletter_list_id', $data) && $data['newsletter_list_id'] !== null) {
+            if ($problem = $this->assertListOnSite($data['newsletter_list_id'])) {
+                return $problem;
+            }
+        }
 
         $c->fill($data)->save();
 
@@ -268,6 +297,11 @@ class NewsletterCampaignController extends Controller
         if (! $listId) {
             return response()->json(['success' => false, 'message' => 'Kies een lijst of stel een standaardlijst in.'], 422);
         }
+        if (($data['newsletter_list_id'] ?? null) !== null) {
+            if ($problem = $this->assertListOnSite($listId)) {
+                return $problem;
+            }
+        }
 
         try {
             $draft = app(CampaignComposer::class)->compose($plan, $briefing, $catalog, trim((string) ($data['adjustment'] ?? '')));
@@ -304,6 +338,11 @@ class NewsletterCampaignController extends Controller
         $listId = $data['newsletter_list_id'] ?? Newsletter::defaultList()?->id;
         if (! $listId) {
             return response()->json(['success' => false, 'message' => 'Kies een lijst of stel een standaardlijst in.'], 422);
+        }
+        if (($data['newsletter_list_id'] ?? null) !== null) {
+            if ($problem = $this->assertListOnSite($listId)) {
+                return $problem;
+            }
         }
 
         $campaign = NewsletterCampaign::create([
