@@ -9,4 +9,6 @@ Route::prefix('api/v1')
     ->middleware(['auth:sanctum', 'mobile.site'])
     ->group(function (): void {
         Route::get('newsletter/campaigns', [NewsletterCampaignController::class, 'index'])->middleware('ability:newsletter.read');
+        Route::get('newsletter/campaigns/{campaign}', [NewsletterCampaignController::class, 'show'])->whereNumber('campaign')->middleware('ability:newsletter.read');
+        Route::get('newsletter/campaigns/{campaign}/preview', [NewsletterCampaignController::class, 'preview'])->whereNumber('campaign')->middleware('ability:newsletter.read');
     });

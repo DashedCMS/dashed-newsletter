@@ -7,8 +7,10 @@ namespace Dashed\DashedNewsletter\Http\Controllers\Api\V1;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\URL;
 use Dashed\DashedCore\Classes\Sites;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 
 class NewsletterCampaignController extends Controller
 {
@@ -45,5 +47,60 @@ class NewsletterCampaignController extends Controller
             'data' => collect($page->items())->map(fn (NewsletterCampaign $c) => $this->summary($c))->all(),
             'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage()],
         ]);
+    }
+
+    /** Zoek een campagne binnen de actieve site of geef 404. */
+    private function findForSite(int $campaign): NewsletterCampaign
+    {
+        return NewsletterCampaign::where('site_id', Sites::getActive())->findOrFail($campaign);
+    }
+
+    /** Ontvangers geteld per verzendstatus. */
+    private function stats(NewsletterCampaign $c): array
+    {
+        $counts = $c->recipients()
+            ->selectRaw('status, COUNT(*) as aantal')
+            ->groupBy('status')
+            ->pluck('aantal', 'status');
+
+        $keys = ['pending', 'sending', 'sent', 'skipped', 'failed', 'interrupted'];
+        $out = [];
+        $total = 0;
+        foreach ($keys as $k) {
+            $out[$k] = (int) ($counts[$k] ?? 0);
+            $total += $out[$k];
+        }
+        $out['total'] = $total;
+
+        return $out;
+    }
+
+    public function show(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+        $c->load(['list:id,name', 'segment:id,name']);
+
+        return response()->json(['data' => array_merge($this->summary($c), [
+            'preheader' => $c->preheader,
+            'from_email' => $c->from_email,
+            'reply_to_email' => $c->reply_to_email,
+            'failure_reason' => $c->failure_reason,
+            'newsletter_list_id' => $c->newsletter_list_id,
+            'newsletter_segment_id' => $c->newsletter_segment_id,
+            'stats' => $this->stats($c),
+        ])]);
+    }
+
+    public function preview(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+
+        $url = URL::temporarySignedRoute(
+            'dashed-newsletter.campaign.preview',
+            now()->addMinutes(30),
+            ['campaign' => $c->id],
+        );
+
+        return response()->json(['url' => $url]);
     }
 }

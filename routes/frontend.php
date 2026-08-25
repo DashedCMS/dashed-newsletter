@@ -32,3 +32,19 @@ Route::match(['get', 'post'], '/nieuwsbrief/afmelden/{recipient}', UnsubscribeCo
 // niets (geen formulier, geen sessie) en zou in de weg zitten.
 Route::get('/nieuwsbrief/bekijken/{recipient}', CampaignWebVersionController::class)
     ->name('dashed-newsletter.campaign.web-version');
+
+// Ook buiten de web-groep: zelfde reden als hierboven. Bewust géén
+// type-hinted model in de closure-signature: zonder de web-groep loopt
+// SubstituteBindings niet mee, dus impliciete route-model-binding gebeurt
+// hier niet — Laravel zou dan stilzwijgend een lege NewsletterCampaign()
+// uit de container maken in plaats van de aangevraagde campagne op te
+// zoeken (transformDependency() in ResolvesRouteDependencies valt terug op
+// container->make() zodra de parameter nog geen model-instantie is). Vandaar
+// de int + handmatige findOrFail(), net als bij de routes hierboven.
+Route::get('/nieuwsbrief/preview/{campaign}', function (int $campaign) {
+    $campaign = \Dashed\DashedNewsletter\Models\NewsletterCampaign::findOrFail($campaign);
+
+    return response(
+        app(\Dashed\DashedNewsletter\Campaigns\CampaignRenderer::class)->renderTemplate($campaign)
+    )->header('Content-Type', 'text/html');
+})->middleware('signed')->name('dashed-newsletter.campaign.preview');
