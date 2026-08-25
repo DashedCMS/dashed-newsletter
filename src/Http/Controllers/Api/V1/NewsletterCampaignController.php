@@ -151,6 +151,13 @@ class NewsletterCampaignController extends Controller
     {
         $c = $this->findForSite($campaign);
 
+        if (! in_array($c->status, [NewsletterCampaign::STATUS_CONCEPT, NewsletterCampaign::STATUS_SCHEDULED], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Alleen een concept kan ingepland worden.',
+            ], 422);
+        }
+
         if ($problem = CampaignGuard::problem($c)) {
             return response()->json(['success' => false, 'message' => $problem], 422);
         }
@@ -170,7 +177,18 @@ class NewsletterCampaignController extends Controller
     {
         $c = $this->findForSite($campaign);
 
-        CampaignCanceller::cancel($c);
+        if ($c->status === NewsletterCampaign::STATUS_SCHEDULED) {
+            // CampaignCanceller claimt/onderbreekt alleen STATUS_SENDING; voor
+            // een ingeplande campagne raakt dat 0 rijen en blijft de status
+            // "scheduled" staan, waardoor SendScheduledCampaigns 'm alsnog op
+            // het geplande tijdstip verstuurt. Hier direct annuleren en de
+            // planning wissen zodat de scheduler 'm overslaat.
+            $c->status = NewsletterCampaign::STATUS_CANCELLED;
+            $c->scheduled_at = null;
+            $c->save();
+        } else {
+            CampaignCanceller::cancel($c);
+        }
 
         return $this->show($request, $c->id);
     }
