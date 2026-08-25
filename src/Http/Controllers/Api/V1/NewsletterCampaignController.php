@@ -103,4 +103,31 @@ class NewsletterCampaignController extends Controller
 
         return response()->json(['url' => $url]);
     }
+
+    public function update(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+
+        if ($c->status !== NewsletterCampaign::STATUS_CONCEPT) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Alleen een concept kan bewerkt worden.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'subject' => ['sometimes', 'string', 'max:255'],
+            'preheader' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'from_email' => ['sometimes', 'nullable', 'email'],
+            'reply_to_email' => ['sometimes', 'nullable', 'email'],
+            'newsletter_list_id' => ['sometimes', 'nullable', 'integer'],
+            'newsletter_segment_id' => ['sometimes', 'nullable', 'integer'],
+            'scheduled_at' => ['sometimes', 'nullable', 'date'],
+        ]);
+
+        $c->fill($data)->save();
+
+        return $this->show($request, $c->id);
+    }
 }
