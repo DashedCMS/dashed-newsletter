@@ -86,13 +86,6 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 ->command('dashed:send-scheduled-campaigns')
                 ->everyMinute()
                 ->withoutOverlapping();
-
-            // Wekelijks en niet dagelijks: een tabel die per jaar wordt
-            // afgekapt heeft geen dagelijkse ronde nodig, en een zware delete
-            // hoort niet elke nacht te draaien.
-            app(\Illuminate\Console\Scheduling\Schedule::class)
-                ->command('dashed:prune-campaign-clicks')
-                ->weekly();
         });
 
         // Op klassenaam luisteren zodat dit pakket geen harde afhankelijkheid
@@ -207,7 +200,14 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 ->pakket('dashed-newsletter', 'Nieuwsbrief')
                 ->tabel('dashed__newsletter_campaign_clicks')
                 ->termijn(
-                    Termijn::make('campaign_clicks', fn () => (int) config('dashed-newsletter.clicks.retention_days', 365), 'created_at')
+                    // Gemeten vanaf clicked_at en niet vanaf created_at: dat is
+                    // de kolom waar het oude command op stond en de enige die
+                    // zegt wanneer er echt geklikt is.
+                    //
+                    // Een lege env-regel geeft hier een standaard van nul.
+                    // Termijn::waarde() laat dat niet door en gooit dan, zodat
+                    // het opruimen faalt in plaats van elke klik te wissen.
+                    Termijn::make('campaign_clicks', fn () => (int) config('dashed-newsletter.clicks.retention_days', 365), 'clicked_at')
                         ->label('Kliks bewaren (dagen)')
                         ->uitleg('De losse kliks per ontvanger. De totalen per campagne blijven staan. Standaard: 365 dagen.')
                 )
