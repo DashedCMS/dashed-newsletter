@@ -5,25 +5,29 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Http\Controllers\Api\V1;
 
 use Illuminate\Http\Request;
+use Dashed\DashedAi\Facades\Ai;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\URL;
-use Dashed\DashedAi\Facades\Ai;
 use Dashed\DashedCore\Classes\Sites;
+use Illuminate\Support\Facades\Mail;
 use Dashed\DashedNewsletter\Ai\CampaignPlan;
 use Dashed\DashedNewsletter\Ai\CampaignPlanner;
+use Dashed\DashedNewsletter\Facades\Newsletter;
 use Dashed\DashedNewsletter\Ai\CampaignBriefing;
 use Dashed\DashedNewsletter\Ai\CampaignComposer;
-use Dashed\DashedNewsletter\Ai\Exceptions\AiGenerationFailedException;
-use Dashed\DashedCore\Classes\ContentStudio\BlockCatalog;
-use Dashed\DashedNewsletter\Facades\Newsletter;
-use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
-use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
-use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
+use Dashed\DashedNewsletter\Mail\NewsletterCampaignMail;
+use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
+use Dashed\DashedNewsletter\Campaigns\CampaignStatistics;
+use Dashed\DashedNewsletter\Campaigns\UnsubscribeReasons;
+use Dashed\DashedCore\Classes\ContentStudio\BlockCatalog;
+use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
+use Dashed\DashedNewsletter\Ai\Exceptions\AiGenerationFailedException;
+use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 
 class NewsletterCampaignController extends Controller
 {
@@ -124,6 +128,53 @@ class NewsletterCampaignController extends Controller
             'newsletter_segment_id' => $c->newsletter_segment_id,
             'stats' => $this->stats($c),
         ])]);
+    }
+
+    public function statistics(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+        $stats = new CampaignStatistics($c);
+
+        return response()->json(['totals' => $stats->totals(), 'links' => $stats->links()]);
+    }
+
+    public function recipients(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+
+        $query = $c->recipients()->latest('id');
+        if ($status = $request->query('status')) {
+            $query->where('status', (string) $status);
+        }
+        $page = $query->paginate(50);
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn (NewsletterCampaignRecipient $r) => [
+                'id' => $r->id,
+                'email' => $r->email,
+                'status' => $r->status,
+                'reason' => $r->skip_reason ?? $r->bounce_reason ?? null,
+                'delivered_at' => optional($r->delivered_at)->toIso8601String(),
+                'opened_at' => optional($r->opened_at)->toIso8601String(),
+                'open_count' => (int) ($r->open_count ?? 0),
+                'clicked_at' => optional($r->clicked_at)->toIso8601String(),
+                'click_count' => (int) ($r->click_count ?? 0),
+                'unsubscribed_at' => optional($r->unsubscribed_at)->toIso8601String(),
+            ])->all(),
+            'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage()],
+        ]);
+    }
+
+    public function unsubscribeReasons(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+
+        return response()->json([
+            'totals' => UnsubscribeReasons::totals(null, $c),
+            'total' => UnsubscribeReasons::total(null, $c),
+            'without_reason' => UnsubscribeReasons::withoutReason(null, $c),
+            'comments' => UnsubscribeReasons::comments(null, $c),
+        ]);
     }
 
     public function preview(Request $request, int $campaign): JsonResponse
