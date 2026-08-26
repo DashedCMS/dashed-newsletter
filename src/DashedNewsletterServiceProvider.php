@@ -7,6 +7,8 @@ namespace Dashed\DashedNewsletter;
 use Dashed\DashedCore\Models\User;
 use Illuminate\Support\Facades\Event;
 use Spatie\LaravelPackageTools\Package;
+use Dashed\DashedCore\Retention\Termijn;
+use Dashed\DashedCore\Retention\Retention;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Dashed\DashedNewsletter\Mail\EmailBlocks\SocialBlock;
@@ -184,5 +186,31 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 'read-only' => ['newsletter.read'],
             ]);
         }
+
+        self::registreerBewaartermijnen();
+    }
+
+    /**
+     * De campagnekliks aanmelden bij het bewaartermijnenregister.
+     *
+     * Statisch en apart van packageBooted(), zodat een test hem opnieuw kan
+     * aanroepen na app(RetentionRegistry::class)->flush().
+     *
+     * Kale Nederlandse tekst, geen __(): dit pakket staat niet in
+     * tools/i18n/migrated.txt.
+     */
+    public static function registreerBewaartermijnen(): void
+    {
+        cms()->registerRetention(
+            Retention::make('campaign_clicks')
+                ->label('Kliks in nieuwsbrieven')
+                ->pakket('dashed-newsletter', 'Nieuwsbrief')
+                ->tabel('dashed__newsletter_campaign_clicks')
+                ->termijn(
+                    Termijn::make('campaign_clicks', fn () => (int) config('dashed-newsletter.clicks.retention_days', 365), 'created_at')
+                        ->label('Kliks bewaren (dagen)')
+                        ->uitleg('De losse kliks per ontvanger. De totalen per campagne blijven staan. Standaard: 365 dagen.')
+                )
+        );
     }
 }
