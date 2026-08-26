@@ -11,7 +11,7 @@
     <iframe
         title="Voorbeeld van de nieuwsbrief"
         class="w-full border border-gray-200 rounded bg-white"
-        style="height: 70vh; {{ $breedte === 'smal' ? 'max-width: 400px;' : '' }}"
+        style="height: {{ $breedte === 'smal' ? '70vh' : '85vh' }}; {{ $breedte === 'smal' ? 'max-width: 400px;' : '' }}"
         sandbox=""
         srcdoc="{{ $html }}"
     ></iframe>

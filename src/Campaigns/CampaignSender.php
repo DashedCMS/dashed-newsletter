@@ -7,8 +7,8 @@ namespace Dashed\DashedNewsletter\Campaigns;
 use Illuminate\Mail\SentMessage;
 use Illuminate\Support\Facades\Mail;
 use Dashed\DashedCore\Models\SentEmail;
-use Dashed\DashedNewsletter\Mail\NewsletterCampaignMail;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Mail\NewsletterCampaignMail;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Models\NewsletterSuppression;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
@@ -97,7 +97,7 @@ class CampaignSender
             // voor reden dan ook leeg is, bijvoorbeeld bij een campagne die met
             // de hand opnieuw in gang gezet is.
             $html = app(CampaignRenderer::class)->substitute(
-                (string) ($campaign->rendered_html ?: app(CampaignRenderer::class)->renderTemplate($campaign)),
+                (string) ($campaign->rendered_html ?: app(CampaignRenderer::class)->renderForSending($campaign)),
                 $recipient
             );
 

@@ -137,7 +137,7 @@ class EditNewsletterCampaign extends EditRecord
                         ->required(fn (Get $get): bool => $get('when') === 'later')
                         ->visible(fn (Get $get): bool => $get('when') === 'later'),
                 ])
-                ->action(function (array $data): void {
+                ->action(function (array $data) {
                     $campaign = $this->getRecord();
 
                     // CampaignGuard::problem() is de enige waarheid over
@@ -175,6 +175,19 @@ class EditNewsletterCampaign extends EditRecord
                     StartCampaignJob::dispatch($campaign->id);
 
                     Notification::make()->title('Verzenden gestart')->success()->send();
+
+                    // Naar de bekijkpagina, en niet blijven staan. Zodra de
+                    // job de status op 'sending' zet weigert
+                    // getEditAuthorizationResponse() dit hele scherm, dus wie
+                    // hier blijft kijkt naar een pagina waar hij geen toegang
+                    // meer toe heeft en loopt bij de eerstvolgende klik tegen
+                    // een dichte deur. Op de bekijkpagina staat bovendien wat
+                    // je op dit moment wilt zien: hoe het verzenden loopt.
+                    //
+                    // Alleen bij echt verzenden. Inplannen laat de campagne op
+                    // 'scheduled' staan, en dat blijft bewerkbaar; daar zou
+                    // wegnavigeren juist in de weg zitten.
+                    return redirect(NewsletterCampaignResource::getUrl('view', ['record' => $campaign]));
                 }),
 
             // Zelfde waarschuwing als de verwijderknop in de tabel: de

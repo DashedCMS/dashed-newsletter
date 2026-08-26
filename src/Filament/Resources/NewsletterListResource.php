@@ -20,8 +20,10 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\ColorPicker;
 use Dashed\DashedCore\Models\Customsetting;
+use Filament\Infolists\Components\ViewEntry;
 use Dashed\DashedNewsletter\Models\NewsletterList;
-use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
+use Dashed\DashedNewsletter\Campaigns\UnsubscribeReasons;
+use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\EditNewsletterList;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\ListNewsletterLists;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\CreateNewsletterList;
@@ -74,7 +76,33 @@ class NewsletterListResource extends Resource
                 TextInput::make('reply_to_email')->label('Antwoordadres')->email(),
                 Toggle::make('notify_on_subscribe')->label('Melding bij aanmelding'),
                 Toggle::make('notify_on_unsubscribe')->label('Melding bij afmelding'),
+                TextInput::make('send_rate_per_minute')
+                    ->label('Verzendtempo')
+                    ->numeric()
+                    ->minValue(0)
+                    ->suffix('mails per minuut')
+                    ->placeholder('Volg de site-instelling (' . (int) config('dashed-newsletter.send_rate_per_minute', 0) . ')')
+                    ->helperText('Een campagne wordt in porties over de tijd uitgesmeerd. Leeg laten volgt de instelling van de site; 0 betekent geen begrenzing. Spreiden beschermt je bezorgbaarheid: duizenden mails in een ruk vanaf een domein dat normaal weinig verstuurt, is precies het patroon waar spamfilters op letten.'),
             ])->columns(2),
+            // Alleen op een bestaande lijst: bij een nieuwe valt er niets te
+            // tellen, en een lege tabel op een aanmaakscherm is ruis.
+            Section::make('Waarom mensen zich afmeldden')
+                ->columnSpanFull()
+                ->collapsible()
+                ->collapsed()
+                ->visible(fn (?NewsletterList $record): bool => $record !== null)
+                ->schema([
+                    ViewEntry::make('afmeldredenen')
+                        ->view('dashed-newsletter::filament.unsubscribe-reasons')
+                        ->viewData(fn (?NewsletterList $record): array => [
+                            'totaal' => $record ? UnsubscribeReasons::total(list: $record) : 0,
+                            'zonderReden' => $record ? UnsubscribeReasons::withoutReason(list: $record) : 0,
+                            'redenen' => $record ? UnsubscribeReasons::totals(list: $record) : [],
+                            'toelichtingen' => $record ? UnsubscribeReasons::comments(list: $record) : [],
+                            'omschrijvingen' => NewsletterCampaignRecipient::unsubscribeReasons(),
+                        ]),
+                ]),
+
             Section::make('Vormgeving van de mail')
                 ->description('Laat leeg om de instellingen van de site aan te houden. De header staat boven elke campagne van deze lijst, de footer eronder.')
                 ->collapsed()
@@ -84,6 +112,12 @@ class NewsletterListResource extends Resource
                     ColorPicker::make('mail_primary_color')->label('Primaire kleur'),
                     ColorPicker::make('mail_text_color')->label('Tekstkleur op primaire kleur'),
                     ColorPicker::make('mail_background_color')->label('Achtergrondkleur'),
+                    Toggle::make('track_opens')
+                        ->label('Openen meten')
+                        ->helperText('Zet een onzichtbaar plaatje in de mail. Let op: Apple Mail haalt dat standaard op zonder dat iemand kijkt, dus openingspercentages vallen structureel te hoog uit.'),
+                    Toggle::make('track_clicks')
+                        ->label('Klikken meten')
+                        ->helperText('Stuurt de links in de mail via deze website, zodat je ziet waarop geklikt wordt. De ontvanger komt op dezelfde pagina uit.'),
                     Builder::make('header_blocks')
                         ->label('Header')
                         ->blocks(fn (): array => NewsletterCampaignResource::newsletterBlocks())

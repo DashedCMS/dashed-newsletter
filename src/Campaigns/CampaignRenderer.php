@@ -7,6 +7,7 @@ namespace Dashed\DashedNewsletter\Campaigns;
 use Illuminate\Support\Facades\URL;
 use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Models\NewsletterCampaignLink;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
 /**
@@ -96,6 +97,34 @@ class CampaignRenderer
                 || $this->heeftAfmeldblok($campaign->blocks ?? [], $registry)
                 || $this->heeftAfmeldblok($footerBlocks, $registry),
         ])->render();
+    }
+
+    /**
+     * De HTML voor het verzendpad: hetzelfde sjabloon als renderTemplate(),
+     * plus de tracking die de lijst toestaat.
+     *
+     * Bewust een aparte methode en geen vlag op renderTemplate(). De preview,
+     * het scherm Voorbeeld en de webversie gaan allemaal door renderTemplate()
+     * heen, en die mogen nooit links omschrijven of een pixel plaatsen: dan
+     * telt een redacteur die zijn eigen concept bekijkt mee als opening, en
+     * staan er linkregels van een campagne die nooit verstuurd is. Met een
+     * vlag is dat een kwestie van een aanroeper die hem vergeet; met twee
+     * methodes kan het niet per ongeluk.
+     */
+    public function renderForSending(NewsletterCampaign $campaign): string
+    {
+        $html = $this->renderTemplate($campaign);
+        $list = $campaign->list;
+
+        if ($list?->track_clicks) {
+            $html = app(LinkRewriter::class)->rewrite($campaign, $html);
+        }
+
+        if ($list?->track_opens) {
+            $html = app(TrackingPixel::class)->append($html);
+        }
+
+        return $html;
     }
 
     /**
@@ -245,13 +274,63 @@ class CampaignRenderer
         // hier zinloos geweest omdat de waarde niet van een bezoeker komt.
         $waarden['unsubscribe_url'] = UnsubscribeLink::for($recipient);
         $waarden['web_version_url'] = $recipient->id
-            ? URL::signedRoute('dashed-newsletter.campaign.web-version', ['recipient' => $recipient->id])
+            ? SignedLink::to('dashed-newsletter.campaign.web-version', ['recipient' => $recipient->id])
+            : '';
+
+        // Leeg bij een proefmail, net als de webversie hierboven: er is geen
+        // opgeslagen ontvangerregel om naar te ondertekenen, en een beheerder
+        // die zichzelf een proef stuurt hoort ook niet als opening in de
+        // cijfers te belanden.
+        $waarden['open_pixel_url'] = $recipient->id
+            ? SignedLink::to('dashed-newsletter.campaign.open', ['recipient' => $recipient->id])
             : '';
 
         return preg_replace_callback(
             '/:(\w+):/',
-            fn (array $m): string => array_key_exists($m[1], $waarden) ? $waarden[$m[1]] : $m[0],
+            function (array $m) use ($waarden, $recipient): string {
+                if (array_key_exists($m[1], $waarden)) {
+                    return $waarden[$m[1]];
+                }
+
+                // De klikplaatshouders staan niet in $waarden: een campagne
+                // kan er tientallen hebben, en die allemaal vooraf opbouwen
+                // zou voor elke ontvanger een reeks ondertekende URL's maken
+                // waarvan de meeste niet in de mail voorkomen.
+                if (preg_match('/^click_(\d+)$/', $m[1], $klik)) {
+                    return $this->klikUrl((int) $klik[1], $recipient);
+                }
+
+                return $m[0];
+            },
             $html
         );
+    }
+
+    /**
+     * De ondertekende klik-URL van een link voor deze ontvanger.
+     *
+     * Twee terugvallen, allebei op de echte URL en niet op een lege string.
+     * Een proefmail heeft geen opgeslagen ontvangerregel om naar te
+     * ondertekenen (zie UnsubscribeLink::for(), zelfde geval), en dan hoort de
+     * knop gewoon te werken zonder gemeten te worden. Bestaat de linkregel
+     * niet meer, dan laten we de plaatshouder staan: dat valt op in een
+     * preview, terwijl een lege href pas bij een ontvanger opvalt.
+     */
+    private function klikUrl(int $linkId, NewsletterCampaignRecipient $recipient): string
+    {
+        $link = NewsletterCampaignLink::find($linkId);
+
+        if (! $link) {
+            return ':click_' . $linkId . ':';
+        }
+
+        if (! $recipient->exists) {
+            return $link->url;
+        }
+
+        return SignedLink::to('dashed-newsletter.campaign.click', [
+            'link' => $link->id,
+            'recipient' => $recipient->id,
+        ]);
     }
 }

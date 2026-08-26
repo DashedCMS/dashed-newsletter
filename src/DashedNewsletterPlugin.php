@@ -6,6 +6,7 @@ namespace Dashed\DashedNewsletter;
 
 use Filament\Panel;
 use Filament\Contracts\Plugin;
+use Dashed\DashedNewsletter\Filament\Pages\UnsubscribeReasonsPage;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterSubscriberResource;
@@ -33,6 +34,7 @@ class DashedNewsletterPlugin implements Plugin
             // en het paneel zijn twee losse registraties.
             ->pages([
                 DashedNewsletterSettingsPage::class,
+                UnsubscribeReasonsPage::class,
             ]);
     }
 

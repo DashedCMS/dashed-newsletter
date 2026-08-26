@@ -6,6 +6,7 @@ namespace Dashed\DashedNewsletter\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Dashed\DashedNewsletter\Campaigns\SignedLink;
 use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
@@ -16,7 +17,7 @@ class CampaignWebVersionController
         // Ondertekend, want de webversie bevat de gepersonaliseerde tekst van
         // deze ene ontvanger. Zonder handtekening zou een oplopend nummer
         // genoeg zijn om de nieuwsbrief van een ander te lezen.
-        abort_unless($request->hasValidSignature(), 403);
+        abort_unless(SignedLink::isValid($request), 403);
 
         $ontvanger = NewsletterCampaignRecipient::find($recipient);
 

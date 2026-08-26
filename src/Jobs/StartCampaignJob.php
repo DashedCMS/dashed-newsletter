@@ -7,10 +7,10 @@ namespace Dashed\DashedNewsletter\Jobs;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Dashed\DashedNewsletter\Campaigns\CampaignRecipients;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
@@ -96,18 +96,43 @@ class StartCampaignJob implements ShouldQueue
         // ontvanger gerenderd worden, dan bevraagt een productblok de webshop
         // net zo vaak als er ontvangers zijn.
         $campaign->update([
-            'rendered_html' => app(CampaignRenderer::class)->renderTemplate($campaign),
+            'rendered_html' => app(CampaignRenderer::class)->renderForSending($campaign),
         ]);
 
         CampaignRecipients::build($campaign);
 
+        // Het tempo bepaalt zowel hoe groot een portie is als hoe ver ze uit
+        // elkaar liggen. Een portie staat voor precies zoveel werk als er in
+        // die tijd mag: zou de portie groter zijn dan het tempo per minuut,
+        // dan gaat de eerste er alsnog in een klap uit en is de afspraak een
+        // papieren afspraak.
+        //
+        // Spreiden en geen pauze binnen de portie: een worker die staat te
+        // slapen is een worker die niets anders kan doen, en bij duizenden
+        // ontvangers is dat urenlang. De wachtrij kan wachten, de worker niet.
+        $tempo = $campaign->list?->effectiveSendRatePerMinute() ?? 0;
         $chunkSize = (int) config('dashed-newsletter.chunk_size', 200);
+
+        if ($tempo > 0) {
+            $chunkSize = max(1, min($chunkSize, $tempo));
+        }
+
+        $secondenPerPortie = $tempo > 0
+            ? (int) round(($chunkSize * 60) / $tempo)
+            : 0;
 
         NewsletterCampaignRecipient::where('newsletter_campaign_id', $campaign->id)
             ->where('status', NewsletterCampaignRecipient::STATUS_PENDING)
             ->pluck('id')
             ->chunk($chunkSize)
-            ->each(fn ($ids) => SendCampaignChunkJob::dispatch($campaign->id, $ids->all()));
+            ->values()
+            ->each(function ($ids, int $nummer) use ($campaign, $secondenPerPortie): void {
+                $job = SendCampaignChunkJob::dispatch($campaign->id, $ids->all());
+
+                if ($secondenPerPortie > 0 && $nummer > 0) {
+                    $job->delay(now()->addSeconds($nummer * $secondenPerPortie));
+                }
+            });
 
         // Met een synchrone wachtrij (zoals in tests) is elke portie hierboven
         // al meteen afgehandeld tegen de tijd dat we hier komen, en kan de

@@ -10,6 +10,7 @@ use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Actions\DeleteAction;
 use Dashed\DashedCore\Classes\Sites;
@@ -36,10 +37,13 @@ use Dashed\DashedNewsletter\Campaigns\CampaignCanceller;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Filament\Livewire\CampaignPreview;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
+use Dashed\DashedNewsletter\Filament\Actions\DuplicateCampaignAction;
 use Dashed\DashedNewsletter\Filament\Actions\GenerateCampaignWithAiAction;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\EditNewsletterCampaign;
+use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\ViewNewsletterCampaign;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\ListNewsletterCampaigns;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Pages\CreateNewsletterCampaign;
+use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\RelationManagers\RecipientsRelationManager;
 
 class NewsletterCampaignResource extends Resource
 {
@@ -266,7 +270,9 @@ class NewsletterCampaignResource extends Resource
                     ->modalDescription(fn (NewsletterCampaign $record): string => self::cancelWarningDescription($record))
                     ->modalSubmitActionLabel('Afbreken')
                     ->action(fn (NewsletterCampaign $record) => CampaignCanceller::cancel($record)),
+                ViewAction::make(),
                 EditAction::make(),
+                DuplicateCampaignAction::make(),
                 DeleteAction::make()->modalDescription(
                     fn (NewsletterCampaign $record): string => self::deleteWarningDescription($record)
                 ),
@@ -274,11 +280,19 @@ class NewsletterCampaignResource extends Resource
             ->defaultSort('created_at', 'desc');
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            RecipientsRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListNewsletterCampaigns::route('/'),
             'create' => CreateNewsletterCampaign::route('/create'),
+            'view' => ViewNewsletterCampaign::route('/{record}'),
             'edit' => EditNewsletterCampaign::route('/{record}/edit'),
         ];
     }

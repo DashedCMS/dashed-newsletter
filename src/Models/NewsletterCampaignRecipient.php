@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -41,12 +42,51 @@ class NewsletterCampaignRecipient extends Model
     public const SKIP_INVALID_EMAIL = 'invalid_email';
     public const SKIP_CANCELLED = 'cancelled';
 
+    /**
+     * De redenen die een ontvanger op de afmeldpagina kan kiezen. Kort
+     * gehouden: een lange lijst levert minder bruikbare antwoorden op dan een
+     * handvol dat de meeste gevallen dekt, met daarnaast een vrij veld.
+     */
+    public const REASON_TOO_OFTEN = 'te_vaak';
+    public const REASON_NOT_RELEVANT = 'niet_relevant';
+    public const REASON_NEVER_SIGNED_UP = 'nooit_aangemeld';
+    public const REASON_TOO_MANY_MAILS = 'te_veel_mail';
+    public const REASON_OTHER = 'anders';
+
+    /** @return array<string, string> */
+    public static function unsubscribeReasons(): array
+    {
+        return [
+            self::REASON_TOO_OFTEN => 'Ik krijg te vaak mail',
+            self::REASON_NOT_RELEVANT => 'De inhoud is niet relevant voor mij',
+            self::REASON_NEVER_SIGNED_UP => 'Ik heb me hier nooit voor aangemeld',
+            self::REASON_TOO_MANY_MAILS => 'Ik wil sowieso minder mail',
+            self::REASON_OTHER => 'Anders',
+        ];
+    }
+
     protected $table = 'dashed__newsletter_campaign_recipients';
 
     protected $guarded = [];
 
+    /**
+     * Eloquent leest de standaardwaarden van de database niet in, dus zonder
+     * dit staan de tellers op null op een vers aangemaakte regel. Nul is wat
+     * ze zijn: er is nog niet geopend en niet geklikt.
+     */
+    protected $attributes = [
+        'open_count' => 0,
+        'click_count' => 0,
+    ];
+
     protected $casts = [
         'sent_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'bounced_at' => 'datetime',
+        'complained_at' => 'datetime',
+        'opened_at' => 'datetime',
+        'clicked_at' => 'datetime',
+        'unsubscribed_at' => 'datetime',
     ];
 
     public function campaign(): BelongsTo
@@ -57,5 +97,10 @@ class NewsletterCampaignRecipient extends Model
     public function subscriber(): BelongsTo
     {
         return $this->belongsTo(NewsletterSubscriber::class, 'newsletter_subscriber_id');
+    }
+
+    public function clicks(): HasMany
+    {
+        return $this->hasMany(NewsletterCampaignClick::class, 'newsletter_campaign_recipient_id');
     }
 }

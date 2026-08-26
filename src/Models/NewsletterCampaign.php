@@ -48,6 +48,16 @@ class NewsletterCampaign extends Model
         return $this->hasMany(NewsletterCampaignRecipient::class, 'newsletter_campaign_id');
     }
 
+    public function links(): HasMany
+    {
+        return $this->hasMany(NewsletterCampaignLink::class, 'newsletter_campaign_id');
+    }
+
+    public function clicks(): HasMany
+    {
+        return $this->hasMany(NewsletterCampaignClick::class, 'newsletter_campaign_id');
+    }
+
     /**
      * Dezelfde keten als bij een lijst, met de campagne ervoor: eigen adres,
      * anders dat van de lijst, anders dat van de site. Zo stel je het op één
@@ -85,5 +95,46 @@ class NewsletterCampaign extends Model
     public function effectiveSiteId(): ?string
     {
         return $this->site_id ?: $this->list?->site_id;
+    }
+
+    /**
+     * Een kopie van deze campagne als nieuw concept.
+     *
+     * De schone lei staat hier en niet in de knop, want dit is te belangrijk
+     * om aan een scherm over te laten. Twee dingen gaan er anders mis. Een
+     * kopie die 'status' meeneemt houdt zichzelf voor verzonden en is niet
+     * meer te bewerken (zie getEditAuthorizationResponse()). En een kopie die
+     * ontvangerregels meeneemt slaat bij het verzenden precies die mensen
+     * over: CampaignRecipients::build() raakt alleen 'pending' en 'skipped'
+     * aan, dus bestaande 'sent'-regels blijven staan en krijgen niets.
+     *
+     * Bewust een lijst van wat er NIET meegaat, en niet van wat er wel
+     * meegaat: komt er later een kolom bij met inhoud, dan hoort die vanzelf
+     * mee te reizen. Komt er een kolom bij die verzendtoestand is, dan moet
+     * die hier expliciet bij, en dat is precies het moment waarop iemand
+     * erover nadenkt.
+     */
+    public function duplicate(): self
+    {
+        $kopie = $this->replicate([
+            'status',
+            'recipients_count',
+            'sent_count',
+            'failed_count',
+            'rendered_html',
+            'started_at',
+            'completed_at',
+            'scheduled_at',
+            'failure_reason',
+        ]);
+
+        $kopie->name = 'Kopie van ' . $this->name;
+        $kopie->status = self::STATUS_CONCEPT;
+        $kopie->recipients_count = 0;
+        $kopie->sent_count = 0;
+        $kopie->failed_count = 0;
+        $kopie->save();
+
+        return $kopie;
     }
 }

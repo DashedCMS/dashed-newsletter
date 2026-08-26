@@ -29,7 +29,7 @@ class UnsubscribeLink
             return URL::route('dashed.frontend.newsletter.unsubscribe-test');
         }
 
-        return URL::signedRoute('dashed.frontend.newsletter.unsubscribe', [
+        return SignedLink::to('dashed.frontend.newsletter.unsubscribe', [
             'recipient' => $recipient->id,
         ]);
     }

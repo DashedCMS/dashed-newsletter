@@ -17,6 +17,7 @@ use Dashed\DashedNewsletter\Mail\EmailBlocks\UnsubscribeBlock;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
 use Dashed\DashedNewsletter\Classes\FormApis\NewsletterListAPI;
 use Dashed\DashedNewsletter\Segments\Conditions\FieldCondition;
+use Dashed\DashedNewsletter\Listeners\MirrorDeliveryToRecipient;
 use Dashed\DashedNewsletter\Segments\Conditions\SourceCondition;
 use Dashed\DashedNewsletter\Segments\Conditions\StatusCondition;
 use Dashed\DashedNewsletter\Segments\Conditions\SubscribedAtCondition;
@@ -52,13 +53,20 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 '2026_08_13_000002_add_blocks_to_newsletter_campaigns_table',
                 '2026_08_13_000003_add_branding_to_newsletter_lists_table',
                 '2026_08_13_000005_add_rendered_html_to_newsletter_campaigns_table',
+                '2026_08_25_000001_add_tracking_to_newsletter_lists_table',
+                '2026_08_25_000002_add_engagement_to_newsletter_campaign_recipients_table',
+                '2026_08_25_000003_create_newsletter_campaign_links_table',
+                '2026_08_25_000004_create_newsletter_campaign_clicks_table',
+                '2026_08_26_000001_add_unsubscribe_reason_to_newsletter_campaign_recipients_table',
+                '2026_08_26_000002_add_send_rate_to_newsletter_lists_table',
             ])
             ->runsMigrations()
             ->hasConfigFile()
             ->hasViews('dashed-newsletter')
             ->hasRoute('frontend')
             ->hasRoute('mobile-api')
-            ->hasCommand(\Dashed\DashedNewsletter\Commands\SendScheduledCampaigns::class);
+            ->hasCommand(\Dashed\DashedNewsletter\Commands\SendScheduledCampaigns::class)
+            ->hasCommand(\Dashed\DashedNewsletter\Commands\PruneCampaignClicks::class);
     }
 
     public function packageRegistered(): void
@@ -75,12 +83,26 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 ->command('dashed:send-scheduled-campaigns')
                 ->everyMinute()
                 ->withoutOverlapping();
+
+            // Wekelijks en niet dagelijks: een tabel die per jaar wordt
+            // afgekapt heeft geen dagelijkse ronde nodig, en een zware delete
+            // hoort niet elke nacht te draaien.
+            app(\Illuminate\Console\Scheduling\Schedule::class)
+                ->command('dashed:prune-campaign-clicks')
+                ->weekly();
         });
 
         // Op klassenaam luisteren zodat dit pakket geen harde afhankelijkheid
         // op de gebeurtenisklassen krijgt als dashed-core ouder is.
         Event::listen('Dashed\\DashedCore\\Events\\SentEmailBouncedEvent', [SuppressBouncedAddress::class, 'bounced']);
         Event::listen('Dashed\\DashedCore\\Events\\SentEmailComplainedEvent', [SuppressBouncedAddress::class, 'complained']);
+
+        // Zelfde vorm, op klassenaam als string: SentEmailDeliveredEvent is
+        // nieuw, dus dit pakket kan tegen een oudere dashed-core draaien die
+        // hem nog niet kent.
+        Event::listen('Dashed\\DashedCore\\Events\\SentEmailDeliveredEvent', [MirrorDeliveryToRecipient::class, 'delivered']);
+        Event::listen('Dashed\\DashedCore\\Events\\SentEmailBouncedEvent', [MirrorDeliveryToRecipient::class, 'bounced']);
+        Event::listen('Dashed\\DashedCore\\Events\\SentEmailComplainedEvent', [MirrorDeliveryToRecipient::class, 'complained']);
 
         User::created(fn (User $user) => app(LinkSubscriberToUser::class)->handle($user));
         User::updated(function (User $user): void {
@@ -155,10 +177,10 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
 
             $mobileApi->registerAbilities(['newsletter.read', 'newsletter.write']);
             $mobileApi->registerRoleAbilities([
-                'eigenaar'      => ['newsletter.read', 'newsletter.write'],
-                'admin'         => ['newsletter.read', 'newsletter.write'],
+                'eigenaar' => ['newsletter.read', 'newsletter.write'],
+                'admin' => ['newsletter.read', 'newsletter.write'],
                 'shopbeheerder' => ['newsletter.read', 'newsletter.write'],
-                'read-only'     => ['newsletter.read'],
+                'read-only' => ['newsletter.read'],
             ]);
         }
     }

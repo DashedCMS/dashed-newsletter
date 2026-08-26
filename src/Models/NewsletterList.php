@@ -15,13 +15,46 @@ class NewsletterList extends Model
 
     protected $guarded = [];
 
+    /**
+     * Eloquent leest de standaardwaarden van de database niet in, dus zonder
+     * dit staat track_opens op null op een vers aangemaakte lijst. Falsy is
+     * dat ook, maar null betekent "onbekend" en dat is het niet: tracking
+     * staat uit tot iemand hem aanzet.
+     */
+    protected $attributes = [
+        'track_opens' => false,
+        'track_clicks' => false,
+    ];
+
     protected $casts = [
         'settings' => 'array',
         'notify_on_subscribe' => 'boolean',
         'notify_on_unsubscribe' => 'boolean',
         'header_blocks' => 'array',
         'footer_blocks' => 'array',
+        'track_opens' => 'boolean',
+        'track_clicks' => 'boolean',
+        'send_rate_per_minute' => 'integer',
     ];
+
+    /**
+     * Het tempo waarmee deze lijst verstuurt, in mails per minuut.
+     *
+     * Leeg op de lijst betekent: volg de instelling van de site. Nul op de
+     * lijst betekent uitdrukkelijk geen begrenzing, en dat is iets anders dan
+     * leeg. Zonder dat onderscheid kan een beheerder de standaard niet
+     * uitzetten voor een lijst waar hij hem niet wil.
+     */
+    public function effectiveSendRatePerMinute(): int
+    {
+        $eigen = $this->send_rate_per_minute;
+
+        if ($eigen !== null) {
+            return max(0, (int) $eigen);
+        }
+
+        return max(0, (int) config('dashed-newsletter.send_rate_per_minute', 0));
+    }
 
     public function scopeForSite(Builder $query, ?string $siteId): Builder
     {
