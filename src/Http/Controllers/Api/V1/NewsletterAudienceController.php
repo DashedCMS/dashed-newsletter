@@ -10,12 +10,14 @@ use Illuminate\Routing\Controller;
 use Dashed\DashedCore\Classes\Sites;
 use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Facades\Newsletter;
-use Dashed\DashedNewsletter\Models\NewsletterField;
 use Dashed\DashedNewsletter\Models\NewsletterList;
+use Dashed\DashedNewsletter\Models\NewsletterField;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Models\NewsletterSuppression;
+use Dashed\DashedNewsletter\Segments\SegmentQuery;
 use Dashed\DashedNewsletter\Exceptions\InvalidEmailException;
+use Dashed\DashedNewsletter\Segments\Exceptions\EmptySegmentException;
 
 class NewsletterAudienceController extends Controller
 {
@@ -158,9 +160,15 @@ class NewsletterAudienceController extends Controller
         ]);
 
         $payload = [];
-        if (array_key_exists('status', $data)) { $payload['status'] = $data['status']; }
-        if (array_key_exists('source', $data)) { $payload['source'] = $data['source']; }
-        if (array_key_exists('reactivation_consent_text', $data)) { $payload['reactivation_consent_text'] = $data['reactivation_consent_text']; }
+        if (array_key_exists('status', $data)) {
+            $payload['status'] = $data['status'];
+        }
+        if (array_key_exists('source', $data)) {
+            $payload['source'] = $data['source'];
+        }
+        if (array_key_exists('reactivation_consent_text', $data)) {
+            $payload['reactivation_consent_text'] = $data['reactivation_consent_text'];
+        }
         foreach (($data['fields'] ?? []) as $key => $value) {
             $payload['field_' . $key] = $value;
         }
@@ -257,6 +265,7 @@ class NewsletterAudienceController extends Controller
     public function fields(Request $request, int $list): JsonResponse
     {
         $l = $this->findList($list);
+
         return response()->json(['data' => $l->fields()->orderBy('sort')->get()->map(fn (NewsletterField $f) => $this->fieldPayload($f))->all()]);
     }
 
@@ -321,7 +330,10 @@ class NewsletterAudienceController extends Controller
         ]);
 
         $sup = NewsletterSuppression::block((string) Sites::getActive(), $data['email'], $data['reason'] ?? 'manual', 'app');
-        if (array_key_exists('note', $data)) { $sup->notes = $data['note']; $sup->save(); }
+        if (array_key_exists('note', $data)) {
+            $sup->notes = $data['note'];
+            $sup->save();
+        }
 
         return response()->json(['data' => ['id' => $sup->id, 'email' => $sup->email, 'reason' => $sup->reason, 'source' => $sup->source, 'created_at' => optional($sup->created_at)->toIso8601String()]], 201);
     }
@@ -367,6 +379,100 @@ class NewsletterAudienceController extends Controller
                 'name' => $sg->name,
                 'list_name' => $sg->list?->name,
             ])->all(),
+        ]);
+    }
+
+    /** Segment binnen de actieve site (via zijn lijst) of 404. */
+    private function findSegment(int $segment): NewsletterSegment
+    {
+        return NewsletterSegment::whereHas('list', fn ($q) => $q->where('site_id', Sites::getActive()))->findOrFail($segment);
+    }
+
+    private function segmentPayload(NewsletterSegment $sg): array
+    {
+        $count = null;
+        try {
+            $count = SegmentQuery::cachedCount($sg);
+        } catch (EmptySegmentException) {
+            $count = null;
+        }
+
+        return [
+            'id' => $sg->id,
+            'name' => $sg->name,
+            'newsletter_list_id' => $sg->newsletter_list_id,
+            'list_name' => $sg->list?->name,
+            'rules' => $sg->rules ?: ['operator' => 'and', 'children' => []],
+            'count' => $count,
+        ];
+    }
+
+    public function segmentDetail(Request $request, int $segment): JsonResponse
+    {
+        return response()->json(['data' => $this->segmentPayload($this->findSegment($segment))]);
+    }
+
+    public function storeSegment(Request $request, int $list): JsonResponse
+    {
+        $l = $this->findList($list);
+        $data = $this->validatedSegment($request);
+        $segment = NewsletterSegment::create([
+            'newsletter_list_id' => $l->id,
+            'name' => $data['name'],
+            'rules' => $data['rules'] ?? ['operator' => 'and', 'children' => []],
+        ]);
+
+        return response()->json(['data' => $this->segmentPayload($segment)], 201);
+    }
+
+    public function updateSegment(Request $request, int $segment): JsonResponse
+    {
+        $sg = $this->findSegment($segment);
+        $data = $this->validatedSegment($request);
+        if (array_key_exists('name', $data)) {
+            $sg->name = $data['name'];
+        }
+        if (array_key_exists('rules', $data)) {
+            $sg->rules = $data['rules'];
+        }
+        $sg->save();
+
+        return response()->json(['data' => $this->segmentPayload($sg)]);
+    }
+
+    public function deleteSegment(Request $request, int $segment): JsonResponse
+    {
+        $this->findSegment($segment)->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function segmentPreview(Request $request, int $segment): JsonResponse
+    {
+        $sg = $this->findSegment($segment);
+
+        try {
+            $items = SegmentQuery::for($sg)->limit(50)->get(['id', 'email', 'status']);
+            $count = SegmentQuery::cachedCount($sg);
+        } catch (EmptySegmentException $e) {
+            return response()->json(['valid' => false, 'count' => 0, 'items' => []]);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'count' => $count,
+            'items' => $items->map(fn ($s) => ['id' => $s->id, 'email' => $s->email, 'status' => $s->status])->all(),
+        ]);
+    }
+
+    /** @return array<string,mixed> */
+    private function validatedSegment(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'rules' => ['sometimes', 'array'],
+            'rules.operator' => ['sometimes', 'in:and,or'],
+            'rules.children' => ['sometimes', 'array'],
         ]);
     }
 }
