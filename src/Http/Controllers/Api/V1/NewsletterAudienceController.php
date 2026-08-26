@@ -185,6 +185,11 @@ class NewsletterAudienceController extends Controller
     public function storeList(Request $request): JsonResponse
     {
         $data = $this->validatedList($request);
+        // Kolom is NOT NULL zonder default; leeg betekent "val terug op de
+        // site-instelling" (zie NewsletterList::effectiveFromEmail()), dus we
+        // dwingen hier '' af in plaats van de gebruiker te verplichten iets
+        // in te vullen.
+        $data['from_email'] = $data['from_email'] ?? '';
         $data['site_id'] = Sites::getActive();
         $list = NewsletterList::create($data);
 
@@ -194,14 +199,26 @@ class NewsletterAudienceController extends Controller
     public function updateList(Request $request, int $list): JsonResponse
     {
         $l = $this->findList($list);
-        $l->fill($this->validatedList($request))->save();
+        $data = $this->validatedList($request);
+        if (array_key_exists('from_email', $data) && $data['from_email'] === null) {
+            $data['from_email'] = '';
+        }
+        $l->fill($data)->save();
 
         return response()->json(['data' => $this->listPayload($l)]);
     }
 
     public function deleteList(Request $request, int $list): JsonResponse
     {
-        $this->findList($list)->delete();
+        $l = $this->findList($list);
+        $id = $l->id;
+        $l->delete();
+
+        // Een verwijderde lijst mag niet als standaardlijst blijven staan.
+        $currentDefault = Customsetting::get('newsletter_default_list_id', Sites::getActive());
+        if ($currentDefault !== null && (int) $currentDefault === $id) {
+            Customsetting::set('newsletter_default_list_id', null, (string) Sites::getActive());
+        }
 
         return response()->json(['success' => true]);
     }
@@ -326,7 +343,13 @@ class NewsletterAudienceController extends Controller
     public function updateSettings(Request $request): JsonResponse
     {
         $data = $request->validate(['default_list_id' => ['sometimes', 'nullable', 'integer']]);
-        Customsetting::set('newsletter_default_list_id', $data['default_list_id'] ?? null, (string) Sites::getActive());
+        $listId = $data['default_list_id'] ?? null;
+
+        if ($listId !== null && ! NewsletterList::where('site_id', Sites::getActive())->whereKey($listId)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Onbekende lijst voor deze site.'], 422);
+        }
+
+        Customsetting::set('newsletter_default_list_id', $listId, (string) Sites::getActive());
 
         return $this->settings($request);
     }
