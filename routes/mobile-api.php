@@ -14,6 +14,12 @@ Route::prefix('api/v1')
         Route::get('newsletter/subscribers/{subscriber}', [NewsletterAudienceController::class, 'subscriber'])->whereNumber('subscriber')->middleware('ability:newsletter.read');
         Route::post('newsletter/lists/{list}/subscribers', [NewsletterAudienceController::class, 'addSubscriber'])->whereNumber('list')->middleware('ability:newsletter.write');
         Route::post('newsletter/subscribers/{subscriber}/unsubscribe', [NewsletterAudienceController::class, 'unsubscribe'])->whereNumber('subscriber')->middleware('ability:newsletter.write');
+        Route::get('newsletter/lists/{list}', [NewsletterAudienceController::class, 'listDetail'])->whereNumber('list')->middleware('ability:newsletter.read');
+        Route::post('newsletter/lists', [NewsletterAudienceController::class, 'storeList'])->middleware('ability:newsletter.write');
+        Route::patch('newsletter/lists/{list}', [NewsletterAudienceController::class, 'updateList'])->whereNumber('list')->middleware('ability:newsletter.write');
+        Route::delete('newsletter/lists/{list}', [NewsletterAudienceController::class, 'deleteList'])->whereNumber('list')->middleware('ability:newsletter.write');
+        Route::patch('newsletter/subscribers/{subscriber}', [NewsletterAudienceController::class, 'updateSubscriber'])->whereNumber('subscriber')->middleware('ability:newsletter.write');
+        Route::delete('newsletter/subscribers/{subscriber}', [NewsletterAudienceController::class, 'deleteSubscriber'])->whereNumber('subscriber')->middleware('ability:newsletter.write');
         Route::get('newsletter/suppressions', [NewsletterAudienceController::class, 'suppressions'])->middleware('ability:newsletter.read');
         Route::get('newsletter/segments', [NewsletterAudienceController::class, 'segments'])->middleware('ability:newsletter.read');
         Route::get('newsletter/campaigns', [NewsletterCampaignController::class, 'index'])->middleware('ability:newsletter.read');
