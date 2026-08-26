@@ -8,7 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Dashed\DashedCore\Classes\Sites;
+use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Facades\Newsletter;
+use Dashed\DashedNewsletter\Models\NewsletterField;
 use Dashed\DashedNewsletter\Models\NewsletterList;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
@@ -42,6 +44,20 @@ class NewsletterAudienceController extends Controller
             'notify_on_subscribe' => (bool) $l->notify_on_subscribe,
             'notify_on_unsubscribe' => (bool) $l->notify_on_unsubscribe,
             'send_rate_per_minute' => $l->send_rate_per_minute,
+        ];
+    }
+
+    private function findField(int $field): NewsletterField
+    {
+        return NewsletterField::whereHas('list', fn ($q) => $q->where('site_id', Sites::getActive()))->findOrFail($field);
+    }
+
+    private function fieldPayload(NewsletterField $f): array
+    {
+        return [
+            'id' => $f->id, 'key' => $f->key, 'label' => $f->label, 'type' => $f->type,
+            'required' => (bool) $f->required, 'options' => $f->options ?? [],
+            'default_value' => $f->default_value, 'show_in_signup_form' => (bool) $f->show_in_signup_form, 'sort' => (int) ($f->sort ?? 0),
         ];
     }
 
@@ -219,6 +235,100 @@ class NewsletterAudienceController extends Controller
             ])->all(),
             'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage()],
         ]);
+    }
+
+    public function fields(Request $request, int $list): JsonResponse
+    {
+        $l = $this->findList($list);
+        return response()->json(['data' => $l->fields()->orderBy('sort')->get()->map(fn (NewsletterField $f) => $this->fieldPayload($f))->all()]);
+    }
+
+    public function storeField(Request $request, int $list): JsonResponse
+    {
+        $l = $this->findList($list);
+        $data = $this->validatedField($request);
+        $data['newsletter_list_id'] = $l->id;
+        $field = NewsletterField::create($data);
+
+        return response()->json(['data' => $this->fieldPayload($field)], 201);
+    }
+
+    public function createDefaultFields(Request $request, int $list): JsonResponse
+    {
+        $l = $this->findList($list);
+        foreach ([['key' => 'voornaam', 'label' => 'Voornaam'], ['key' => 'achternaam', 'label' => 'Achternaam']] as $def) {
+            if (! $l->fields()->where('key', $def['key'])->exists()) {
+                NewsletterField::create(['newsletter_list_id' => $l->id, 'key' => $def['key'], 'label' => $def['label'], 'type' => NewsletterField::TYPE_TEXT]);
+            }
+        }
+
+        return response()->json(['data' => $l->fields()->orderBy('sort')->get()->map(fn (NewsletterField $f) => $this->fieldPayload($f))->all()]);
+    }
+
+    public function updateField(Request $request, int $field): JsonResponse
+    {
+        $f = $this->findField($field);
+        $f->fill($this->validatedField($request, $f))->save();
+
+        return response()->json(['data' => $this->fieldPayload($f)]);
+    }
+
+    public function deleteField(Request $request, int $field): JsonResponse
+    {
+        $this->findField($field)->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /** @return array<string,mixed> */
+    private function validatedField(Request $request, ?NewsletterField $existing = null): array
+    {
+        return $request->validate([
+            'key' => ['required', 'string', 'max:255'],
+            'label' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'in:text,number,date,select,checkbox'],
+            'required' => ['sometimes', 'boolean'],
+            'options' => ['sometimes', 'array'],
+            'default_value' => ['sometimes', 'nullable', 'string'],
+            'show_in_signup_form' => ['sometimes', 'boolean'],
+            'sort' => ['sometimes', 'nullable', 'integer'],
+        ]);
+    }
+
+    public function blockAddress(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'reason' => ['sometimes', 'string', 'max:255'],
+            'note' => ['sometimes', 'nullable', 'string'],
+        ]);
+
+        $sup = NewsletterSuppression::block((string) Sites::getActive(), $data['email'], $data['reason'] ?? 'manual', 'app');
+        if (array_key_exists('note', $data)) { $sup->notes = $data['note']; $sup->save(); }
+
+        return response()->json(['data' => ['id' => $sup->id, 'email' => $sup->email, 'reason' => $sup->reason, 'source' => $sup->source, 'created_at' => optional($sup->created_at)->toIso8601String()]], 201);
+    }
+
+    public function unblock(Request $request, int $suppression): JsonResponse
+    {
+        NewsletterSuppression::where('site_id', Sites::getActive())->findOrFail($suppression)->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function settings(Request $request): JsonResponse
+    {
+        $v = Customsetting::get('newsletter_default_list_id', Sites::getActive());
+
+        return response()->json(['default_list_id' => $v !== null ? (int) $v : null]);
+    }
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate(['default_list_id' => ['sometimes', 'nullable', 'integer']]);
+        Customsetting::set('newsletter_default_list_id', $data['default_list_id'] ?? null, (string) Sites::getActive());
+
+        return $this->settings($request);
     }
 
     public function segments(Request $request): JsonResponse

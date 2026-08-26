@@ -20,6 +20,15 @@ Route::prefix('api/v1')
         Route::delete('newsletter/lists/{list}', [NewsletterAudienceController::class, 'deleteList'])->whereNumber('list')->middleware('ability:newsletter.write');
         Route::patch('newsletter/subscribers/{subscriber}', [NewsletterAudienceController::class, 'updateSubscriber'])->whereNumber('subscriber')->middleware('ability:newsletter.write');
         Route::delete('newsletter/subscribers/{subscriber}', [NewsletterAudienceController::class, 'deleteSubscriber'])->whereNumber('subscriber')->middleware('ability:newsletter.write');
+        Route::get('newsletter/lists/{list}/fields', [NewsletterAudienceController::class, 'fields'])->whereNumber('list')->middleware('ability:newsletter.read');
+        Route::post('newsletter/lists/{list}/fields', [NewsletterAudienceController::class, 'storeField'])->whereNumber('list')->middleware('ability:newsletter.write');
+        Route::post('newsletter/lists/{list}/fields/defaults', [NewsletterAudienceController::class, 'createDefaultFields'])->whereNumber('list')->middleware('ability:newsletter.write');
+        Route::patch('newsletter/fields/{field}', [NewsletterAudienceController::class, 'updateField'])->whereNumber('field')->middleware('ability:newsletter.write');
+        Route::delete('newsletter/fields/{field}', [NewsletterAudienceController::class, 'deleteField'])->whereNumber('field')->middleware('ability:newsletter.write');
+        Route::post('newsletter/suppressions', [NewsletterAudienceController::class, 'blockAddress'])->middleware('ability:newsletter.write');
+        Route::delete('newsletter/suppressions/{suppression}', [NewsletterAudienceController::class, 'unblock'])->whereNumber('suppression')->middleware('ability:newsletter.write');
+        Route::get('newsletter/settings', [NewsletterAudienceController::class, 'settings'])->middleware('ability:newsletter.read');
+        Route::put('newsletter/settings', [NewsletterAudienceController::class, 'updateSettings'])->middleware('ability:newsletter.write');
         Route::get('newsletter/suppressions', [NewsletterAudienceController::class, 'suppressions'])->middleware('ability:newsletter.read');
         Route::get('newsletter/segments', [NewsletterAudienceController::class, 'segments'])->middleware('ability:newsletter.read');
         Route::get('newsletter/campaigns', [NewsletterCampaignController::class, 'index'])->middleware('ability:newsletter.read');
