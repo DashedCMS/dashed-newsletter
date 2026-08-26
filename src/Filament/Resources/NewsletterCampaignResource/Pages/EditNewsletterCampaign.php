@@ -125,6 +125,15 @@ class EditNewsletterCampaign extends EditRecord
                             return 'Klaar om te verzenden naar de gekozen ontvangers. '
                                 . 'Uitgeschreven en geblokkeerde adressen vallen automatisch af.';
                         }),
+                    // Vóór het verzenden zeggen wat er niet gemeten wordt, niet
+                    // erna: die mail gaat niet nog een keer de deur uit. De
+                    // tekst staat op de resource, zodat hij te toetsen is
+                    // zonder een modal te hoeven renderen.
+                    Placeholder::make('meten')
+                        ->label('')
+                        ->visible(fn (): bool => NewsletterCampaignResource::trackingWarning($this->getRecord()->list) !== null)
+                        ->content(fn (): string => (string) NewsletterCampaignResource::trackingWarning($this->getRecord()->list)),
+
                     Radio::make('when')
                         ->label('Wanneer')
                         ->options(['now' => 'Nu verzenden', 'later' => 'Op een tijdstip'])

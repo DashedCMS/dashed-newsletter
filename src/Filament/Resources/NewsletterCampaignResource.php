@@ -323,6 +323,38 @@ class NewsletterCampaignResource extends Resource
      * getDeleteAuthorizationResponse(). Een canEdit()-override alleen zou de
      * bewerkpagina wel op slot zetten maar de knop in de tabel niet.
      */
+    /**
+     * Waarschuwing vóór het verzenden als deze lijst niets meet.
+     *
+     * Meten staat standaard uit op een lijst, en dat is een verdedigbare
+     * keuze. Maar wie dat pas achteraf ontdekt heeft er niets meer aan: die
+     * mail gaat niet nog een keer de deur uit. Iemand verstuurde 3000 mails
+     * en zag daarna vrijwel lege cijfers; dat is wat deze regel voorkomt.
+     *
+     * Geeft null als er niets te melden valt.
+     */
+    public static function trackingWarning(?NewsletterList $list): ?string
+    {
+        $uit = [];
+
+        if (! $list?->track_opens) {
+            $uit[] = 'openen';
+        }
+
+        if (! $list?->track_clicks) {
+            $uit[] = 'klikken';
+        }
+
+        if ($uit === []) {
+            return null;
+        }
+
+        return 'Let op: ' . ucfirst(implode(' en ', $uit))
+            . ' ' . (count($uit) === 1 ? 'wordt' : 'worden') . ' niet gemeten voor deze lijst, '
+            . 'dus die cijfers blijven na het verzenden leeg. Aan te zetten bij de lijst'
+            . ($list?->name ? ' "' . $list->name . '"' : '') . ', onder Vormgeving van de mail.';
+    }
+
     public static function getEditAuthorizationResponse(Model $record): Response
     {
         if (in_array($record->status, [

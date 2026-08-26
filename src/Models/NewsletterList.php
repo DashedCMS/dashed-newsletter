@@ -17,13 +17,13 @@ class NewsletterList extends Model
 
     /**
      * Eloquent leest de standaardwaarden van de database niet in, dus zonder
-     * dit staat track_opens op null op een vers aangemaakte lijst. Falsy is
-     * dat ook, maar null betekent "onbekend" en dat is het niet: tracking
-     * staat uit tot iemand hem aanzet.
+     * dit staat track_opens op null op een vers aangemaakte lijst, en dat is
+     * falsy. Meten hoort juist aan te staan tot iemand het uitzet, dus die
+     * stand moet ook hier staan en niet alleen in de migratie.
      */
     protected $attributes = [
-        'track_opens' => false,
-        'track_clicks' => false,
+        'track_opens' => true,
+        'track_clicks' => true,
     ];
 
     protected $casts = [

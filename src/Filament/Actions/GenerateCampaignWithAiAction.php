@@ -164,8 +164,17 @@ class GenerateCampaignWithAiAction
                 }
 
                 $set('name', $concept->name);
-                $set('subject', $concept->subject);
-                $set('preheader', $concept->preheader);
+
+                // Alleen zetten als er werkelijk iets bedacht is. Lukt het de
+                // AI niet, dan is het laatste wat je wilt dat hij wist wat de
+                // redacteur zelf al had staan.
+                if ($concept->subject !== '') {
+                    $set('subject', $concept->subject);
+                }
+
+                if ($concept->preheader !== '') {
+                    $set('preheader', $concept->preheader);
+                }
                 $set('blocks', $concept->blocks);
 
                 // Het voorstel is verzilverd; de knop hoort weer weg te gaan.

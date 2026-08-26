@@ -21,6 +21,13 @@ class NewsletterSuppression extends Model
     public const REASON_COMPLAINT = 'complaint';
     public const REASON_MANUAL = 'manual';
 
+    /**
+     * Een adres dat via een marktplaats bij ons terechtkwam, zoals Bol.com.
+     * Die klant is klant van de marktplaats en heeft ons geen toestemming
+     * gegeven; het pakket van die marktplaats meldt het adres hier aan.
+     */
+    public const REASON_MARKETPLACE = 'marketplace';
+
     protected $table = 'dashed__newsletter_suppressions';
 
     protected $guarded = [];

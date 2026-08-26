@@ -57,7 +57,12 @@ final class CampaignComposer
             // Een campagne zonder naam is in het overzicht niet terug te
             // vinden, dus liever een saaie terugval dan een lege regel.
             name: trim((string) ($antwoord['name'] ?? '')) ?: 'Nieuwsbrief',
-            subject: trim((string) ($antwoord['subject'] ?? '')),
+            // Terugval op de richting die fase 1 al bedacht en die de redacteur
+            // heeft gezien. Beter dat dan leeg: een leeg onderwerp overschrijft
+            // in het scherm wat er stond, en dan kost de AI je werk in plaats
+            // van dat hij het oplevert. Blijft ook dat leeg, dan is leeg het
+            // eerlijke antwoord en laat het scherm het bestaande met rust.
+            subject: trim((string) ($antwoord['subject'] ?? '')) ?: $plan->subjectDirection,
             preheader: trim((string) ($antwoord['preheader'] ?? '')),
             blocks: $blocks,
         );
@@ -136,6 +141,18 @@ final class CampaignComposer
             - Schrijf in het Nederlands, in de je-vorm, zonder uitroeptekens.
             - Zet geen afmeldlink, webversielink of sociale pictogrammen in de blokken:
               die zitten vast in de mail zelf.
+
+            Het onderwerp en de preheader zijn geen bijzaak: daar wordt op besloten of
+            de mail geopend wordt, nog voordat iemand een blok ziet.
+
+            - Bedenk altijd een onderwerpregel. Concreet en specifiek, ongeveer dertig
+              tot vijfenvijftig tekens, zodat hij op een telefoon niet afgekapt wordt.
+              Geen clickbait, geen woord "nieuwsbrief", en niet in hoofdletters.
+            - Bedenk altijd een preheader. Dat is de regel die een mailbox naast het
+              onderwerp toont. Vul het onderwerp aan, herhaal het niet, en maak hem
+              ongeveer veertig tot negentig tekens.
+            - Kreeg je hierboven een richting voor het onderwerp mee, volg die dan,
+              maar schrijf zelf de definitieve regel.
 
             Antwoord met JSON in exact deze vorm, zonder markdown-codeblok:
             {"name": "<korte naam voor in het overzicht>", "subject": "<onderwerpregel>", "preheader": "<preheader>", "blocks": [{"type": "<bloktype>", "data": { ...velden... }}]}

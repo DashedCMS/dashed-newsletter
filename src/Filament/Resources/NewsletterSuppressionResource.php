@@ -12,12 +12,12 @@ use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Forms\Components\Select;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Dashed\DashedCore\Classes\Sites;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
+use Illuminate\Database\Eloquent\Builder;
 use Dashed\DashedNewsletter\Models\NewsletterSuppression;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterSuppressionResource\Pages\ListNewsletterSuppressions;
 
@@ -43,6 +43,7 @@ class NewsletterSuppressionResource extends Resource
             NewsletterSuppression::REASON_BOUNCE => 'Onbestelbaar',
             NewsletterSuppression::REASON_COMPLAINT => 'Spamklacht',
             NewsletterSuppression::REASON_MANUAL => 'Met de hand',
+            NewsletterSuppression::REASON_MARKETPLACE => 'Marktplaats',
         ];
     }
 
@@ -122,6 +123,7 @@ class NewsletterSuppressionResource extends Resource
         // benoemd is.
         return match ($record->reason) {
             NewsletterSuppression::REASON_MANUAL => 'Dit adres is met de hand geblokkeerd. Verwijderen heft de blokkade op: de eerstvolgende nieuwsbrief gaat er weer naartoe.',
+            NewsletterSuppression::REASON_MARKETPLACE => 'Dit adres kwam via een marktplaats zoals Bol.com binnen. Die klant is klant van de marktplaats en heeft jou geen toestemming gegeven, dus die mag geen nieuwsbrief krijgen. Verwijder deze regel alleen als je zeker weet dat deze persoon zich daarnaast zelf heeft aangemeld.',
             NewsletterSuppression::REASON_COMPLAINT => 'Dit adres is geblokkeerd vanwege een spamklacht. Anders dan bij een onbestelbaar adres kwam deze mail wel aan: '
                 . 'de ontvanger heeft hem gezien en zelf als spam gemeld. Verwijderen zet dit adres tegen zijn eigen wil terug op de lijst. '
                 . 'De eerstvolgende nieuwsbrief gaat er dan weer naartoe.',
