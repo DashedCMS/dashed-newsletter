@@ -406,4 +406,30 @@ class NewsletterCampaignController extends Controller
 
         return $this->show($request, $campaign->id)->setStatusCode(201);
     }
+
+    public function sendTest(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+        $data = $request->validate(['email' => ['required', 'email']]);
+
+        // Spiegelt de Filament sendTest-actie: wegwerp-ontvanger, bewust geen
+        // suppression/status-check zodat een beheerder zichzelf altijd een proef kan sturen.
+        $recipient = new NewsletterCampaignRecipient([
+            'newsletter_campaign_id' => $c->id,
+            'email' => $data['email'],
+            'status' => NewsletterCampaignRecipient::STATUS_PENDING,
+        ]);
+
+        Mail::to($data['email'])->send(new NewsletterCampaignMail($c, $recipient));
+
+        return response()->json(['success' => true]);
+    }
+
+    public function duplicate(Request $request, int $campaign): JsonResponse
+    {
+        $c = $this->findForSite($campaign);
+        $copy = $c->duplicate();
+
+        return $this->show($request, $copy->id)->setStatusCode(201);
+    }
 }
