@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Listeners;
 
 use Dashed\DashedCore\Models\SentEmail;
-use Dashed\DashedNewsletter\Models\NewsletterSuppression;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
+use Dashed\DashedNewsletter\Models\NewsletterSuppression;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
 class SuppressBouncedAddress

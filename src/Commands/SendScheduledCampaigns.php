@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Dashed\DashedNewsletter\Commands;
 
 use Illuminate\Console\Command;
-use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Jobs\StartCampaignJob;
+use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 
 class SendScheduledCampaigns extends Command

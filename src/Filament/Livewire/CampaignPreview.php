@@ -6,8 +6,8 @@ namespace Dashed\DashedNewsletter\Filament\Livewire;
 
 use Livewire\Component;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
-use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
+use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Filament\Forms\Components\RichEditor\RichContentRenderer;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 

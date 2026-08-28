@@ -11,11 +11,11 @@ use Dashed\DashedCore\Classes\Sites;
 use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Dashed\DashedNewsletter\Models\NewsletterList;
+use Dashed\DashedNewsletter\Segments\SegmentQuery;
 use Dashed\DashedNewsletter\Models\NewsletterField;
 use Dashed\DashedNewsletter\Models\NewsletterSegment;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Models\NewsletterSuppression;
-use Dashed\DashedNewsletter\Segments\SegmentQuery;
 use Dashed\DashedNewsletter\Exceptions\InvalidEmailException;
 use Dashed\DashedNewsletter\Segments\Exceptions\EmptySegmentException;
 
@@ -391,6 +391,7 @@ class NewsletterAudienceController extends Controller
     private function segmentPayload(NewsletterSegment $sg): array
     {
         $count = null;
+
         try {
             $count = SegmentQuery::cachedCount($sg);
         } catch (EmptySegmentException) {

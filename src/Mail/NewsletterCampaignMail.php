@@ -10,8 +10,8 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Mail\Mailables\Envelope;
 use Dashed\DashedNewsletter\Campaigns\UnsubscribeLink;
-use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
+use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
 class NewsletterCampaignMail extends Mailable
