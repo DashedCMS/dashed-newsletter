@@ -62,6 +62,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 '2026_08_26_000001_add_unsubscribe_reason_to_newsletter_campaign_recipients_table',
                 '2026_08_26_000002_add_send_rate_to_newsletter_lists_table',
                 '2026_08_26_000003_default_newsletter_tracking_to_on',
+                '2026_08_31_000001_repair_newsletter_tracking_default',
             ])
             ->runsMigrations()
             ->hasConfigFile()

@@ -114,9 +114,11 @@ class NewsletterListResource extends Resource
                     ColorPicker::make('mail_background_color')->label('Achtergrondkleur'),
                     Toggle::make('track_opens')
                         ->label('Openen meten')
+                        ->default(true)
                         ->helperText('Zet een onzichtbaar plaatje in de mail. Let op: Apple Mail haalt dat standaard op zonder dat iemand kijkt, dus openingspercentages vallen structureel te hoog uit.'),
                     Toggle::make('track_clicks')
                         ->label('Klikken meten')
+                        ->default(true)
                         ->helperText('Stuurt de links in de mail via deze website, zodat je ziet waarop geklikt wordt. De ontvanger komt op dezelfde pagina uit.'),
                     Builder::make('header_blocks')
                         ->label('Header')

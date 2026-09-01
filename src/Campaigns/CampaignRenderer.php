@@ -43,6 +43,10 @@ class CampaignRenderer
             // effectiveSiteId() is dezelfde afleiding die CampaignRecipients
             // en CampaignSender al gebruiken voor de blokkadelijst.
             'siteId' => $campaign->effectiveSiteId(),
+            // Voor blokken die links opleveren (producten): een relatief pad
+            // is in een mailprogramma een dode link, dus die maken blokken
+            // hiermee absoluut. Dezelfde waarde als de shell-view gebruikt.
+            'siteUrl' => Customsetting::get('site_url', $list?->site_id) ?: config('app.url'),
         ];
 
         $headerBlocks = $list?->header_blocks ?? [];
@@ -77,7 +81,7 @@ class CampaignRenderer
             is_string($media) && $media !== '' => $media,
             default => null,
         };
-        $siteUrl = Customsetting::get('site_url', $list?->site_id) ?: config('app.url');
+        $siteUrl = $context['siteUrl'];
 
         return view('dashed-newsletter::emails.shell', [
             'subject' => (string) $campaign->subject,
