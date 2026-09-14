@@ -37,7 +37,8 @@ class CampaignWebVersionController
         return response(
             $renderer->substitute(
                 (string) ($campaign->rendered_html ?: $renderer->renderTemplate($campaign)),
-                $ontvanger
+                $ontvanger,
+                $campaign
             )
         );
     }

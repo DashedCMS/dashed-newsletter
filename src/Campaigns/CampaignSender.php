@@ -98,7 +98,8 @@ class CampaignSender
             // de hand opnieuw in gang gezet is.
             $html = app(CampaignRenderer::class)->substitute(
                 (string) ($campaign->rendered_html ?: app(CampaignRenderer::class)->renderForSending($campaign)),
-                $recipient
+                $recipient,
+                $campaign
             );
 
             // Deze catch vangt ook een listener die pas ná de aflevering gooit,

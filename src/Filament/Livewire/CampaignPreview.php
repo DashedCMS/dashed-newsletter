@@ -101,7 +101,7 @@ class CampaignPreview extends Component
             $recipient->setRelation('campaign', $campaign);
         }
 
-        return $renderer->substitute($sjabloon, $recipient);
+        return $renderer->substitute($sjabloon, $recipient, $campaign);
     }
 
     /**

@@ -29,25 +29,7 @@ class CampaignRenderer
             'logo' => null,
         ];
 
-        $context = [
-            'primaryColor' => $kleuren['primary'],
-            'textColor' => $kleuren['text'],
-            'backgroundColor' => $kleuren['background'],
-            'siteName' => $list?->name,
-            // Voor blokken die zelf iets opzoeken (artikelen, producten,
-            // kortingscodes): zonder deze sleutel valt zo'n blok terug op
-            // Sites::getActive(), en die geeft in een queue-job geen actieve
-            // site terug (geen HTTP-request om er een af te leiden), maar de
-            // eerst geconfigureerde site. Op een installatie met meer dan één
-            // site komt dan de content van de verkeerde site in de mail.
-            // effectiveSiteId() is dezelfde afleiding die CampaignRecipients
-            // en CampaignSender al gebruiken voor de blokkadelijst.
-            'siteId' => $campaign->effectiveSiteId(),
-            // Voor blokken die links opleveren (producten): een relatief pad
-            // is in een mailprogramma een dode link, dus die maken blokken
-            // hiermee absoluut. Dezelfde waarde als de shell-view gebruikt.
-            'siteUrl' => Customsetting::get('site_url', $list?->site_id) ?: config('app.url'),
-        ];
+        $context = $this->contextVoor($campaign);
 
         $headerBlocks = $list?->header_blocks ?? [];
         $footerBlocks = $list?->footer_blocks ?? [];
@@ -58,10 +40,14 @@ class CampaignRenderer
         // heeftAfmeldblok() voor waarom dat moet samenvallen.
         $registry = cms()->emailBlocks();
 
-        $blocks = array_merge(
-            $this->renderBlocks($headerBlocks, $context, $registry),
-            $this->renderCampaignBody($campaign, $context, $registry),
-            $this->renderBlocks($footerBlocks, $context, $registry),
+        // Eén samengevoegde lijst, want de per-ontvanger-plaatshouder
+        // verwijst met een index naar precies deze lijst; substitute() bouwt
+        // hem opnieuw op via samengevoegdeBlokken() en moet dan dezelfde
+        // volgorde zien.
+        $blocks = $this->renderBlocks(
+            $this->samengevoegdeBlokken($campaign),
+            $context,
+            $registry,
         );
 
         // brandingColors()['logo'] is meestal een media-id (mediaHelper()->
@@ -104,6 +90,65 @@ class CampaignRenderer
     }
 
     /**
+     * De render-context die alle blokken (header, campagne, footer) delen:
+     * kleuren en sitegegevens. Losgetrokken uit renderTemplate() zodat
+     * blokVoorOntvanger() 'm ook kan opbouwen zonder renderTemplate() zelf
+     * aan te roepen (dat zou de hele blokkenlijst nog eens renderen).
+     *
+     * @return array<string, mixed>
+     */
+    private function contextVoor(NewsletterCampaign $campaign): array
+    {
+        $list = $campaign->list;
+        $kleuren = $list?->brandingColors() ?? [
+            'primary' => '#A0131C',
+            'text' => '#ffffff',
+            'background' => '#f3f4f6',
+            'logo' => null,
+        ];
+
+        return [
+            'primaryColor' => $kleuren['primary'],
+            'textColor' => $kleuren['text'],
+            'backgroundColor' => $kleuren['background'],
+            'siteName' => $list?->name,
+            // Voor blokken die zelf iets opzoeken (artikelen, producten,
+            // kortingscodes): zonder deze sleutel valt zo'n blok terug op
+            // Sites::getActive(), en die geeft in een queue-job geen actieve
+            // site terug (geen HTTP-request om er een af te leiden), maar de
+            // eerst geconfigureerde site. Op een installatie met meer dan één
+            // site komt dan de content van de verkeerde site in de mail.
+            // effectiveSiteId() is dezelfde afleiding die CampaignRecipients
+            // en CampaignSender al gebruiken voor de blokkadelijst.
+            'siteId' => $campaign->effectiveSiteId(),
+            // Voor blokken die links opleveren (producten): een relatief pad
+            // is in een mailprogramma een dode link, dus die maken blokken
+            // hiermee absoluut. Dezelfde waarde als de shell-view gebruikt.
+            'siteUrl' => Customsetting::get('site_url', $list?->site_id) ?: config('app.url'),
+        ];
+    }
+
+    /**
+     * Kop-blokken van de lijst, de campagneblokken en de voet-blokken als één
+     * lijst, in de volgorde waarin ze in de mail staan. Een campagne van vóór
+     * het blokkensysteem (alleen rich-editor content) levert één synthetisch
+     * html-blok op, zodat de index hier en in substitute() gelijk blijft.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function samengevoegdeBlokken(NewsletterCampaign $campaign): array
+    {
+        $list = $campaign->list;
+        $body = $campaign->blocks ?? [];
+
+        if ($body === [] && ! blank($campaign->content)) {
+            $body = [['type' => '__legacy_content__', 'data' => ['html' => (string) $campaign->content]]];
+        }
+
+        return array_merge($list?->header_blocks ?? [], $body, $list?->footer_blocks ?? []);
+    }
+
+    /**
      * De HTML voor het verzendpad: hetzelfde sjabloon als renderTemplate(),
      * plus de tracking die de lijst toestaat.
      *
@@ -132,6 +177,12 @@ class CampaignRenderer
     }
 
     /**
+     * Rendert de samengevoegde blokkenlijst (header + campagne + footer) tot
+     * HTML-fragmenten. De index waarop hier geïtereerd wordt is dezelfde index
+     * als in $blocks (dus in samengevoegdeBlokken()): substitute() verwijst
+     * met :block_{n}: naar precies deze positie, dus hier niet opnieuw
+     * doornummeren.
+     *
      * @param array<int, array<string, mixed>> $blocks
      * @param array<string, mixed> $context
      * @param array<string, class-string> $registry
@@ -141,8 +192,17 @@ class CampaignRenderer
     {
         $gerenderd = [];
 
-        foreach ($blocks as $block) {
+        foreach ($blocks as $index => $block) {
             $type = $block['type'] ?? null;
+
+            // Campagnes van vóór dit project hebben alleen rich-editor-
+            // inhoud; samengevoegdeBlokken() zet die om naar dit synthetische
+            // bloktype zodat de index hier en in substitute() gelijk blijft.
+            if ($type === '__legacy_content__') {
+                $gerenderd[] = '<tr><td style="padding:24px;">' . ($block['data']['html'] ?? '') . '</td></tr>';
+
+                continue;
+            }
 
             // Een blok waarvan het pakket niet meer geïnstalleerd is, wordt
             // overgeslagen in plaats van de hele nieuwsbrief te laten klappen.
@@ -150,33 +210,21 @@ class CampaignRenderer
                 continue;
             }
 
+            // Een per-ontvanger-blok laat hier een plaatshouder achter, in de
+            // vorm van CampaignPersonalisation (`:naam:`) zodat vervang() hem
+            // met dezelfde regex vindt. LinkRewriter slaat hem over (bevat een
+            // plaatshouder), dus de link-omschrijving gebeurt pas op het
+            // fragment zelf, per ontvanger.
+            if (method_exists($registry[$type], 'perRecipient') && $registry[$type]::perRecipient()) {
+                $gerenderd[] = ':block_' . $index . ':';
+
+                continue;
+            }
+
             $gerenderd[] = $registry[$type]::render($block['data'] ?? [], $context);
         }
 
         return $gerenderd;
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     * @param array<string, class-string> $registry
-     * @return array<int, string>
-     */
-    private function renderCampaignBody(NewsletterCampaign $campaign, array $context, array $registry): array
-    {
-        $blocks = $campaign->blocks ?? [];
-
-        if ($blocks !== []) {
-            return $this->renderBlocks($blocks, $context, $registry);
-        }
-
-        // Campagnes van vóór dit project hebben alleen rich-editor-inhoud.
-        // Die moeten gewoon door kunnen verzenden, ook als ze al ingepland
-        // stonden toen deze wijziging werd uitgerold.
-        if (blank($campaign->content)) {
-            return [];
-        }
-
-        return ['<tr><td style="padding:24px;">' . $campaign->content . '</td></tr>'];
     }
 
     /**
@@ -209,7 +257,7 @@ class CampaignRenderer
 
     public function render(NewsletterCampaign $campaign, NewsletterCampaignRecipient $recipient): string
     {
-        return $this->substitute($this->renderTemplate($campaign), $recipient);
+        return $this->substitute($this->renderTemplate($campaign), $recipient, $campaign);
     }
 
     /**
@@ -218,10 +266,15 @@ class CampaignRenderer
      * Dit is bewust gescheiden van renderTemplate(): de verzendweg rendert één
      * keer per ronde en roept dit per ontvanger aan. Een productblok bevraagt
      * de webshop dus één keer en niet één keer per ontvanger.
+     *
+     * $campaign is nodig voor een eventuele :block_{n}:-plaatshouder (een
+     * per-ontvanger-blok): zonder de campagne is de blokkenlijst niet opnieuw
+     * op te bouwen. Ontbreekt hij hier, dan valt vervang() terug op
+     * $recipient->campaign (de opgeslagen verzendweg heeft die relatie altijd).
      */
-    public function substitute(string $html, NewsletterCampaignRecipient $recipient): string
+    public function substitute(string $html, NewsletterCampaignRecipient $recipient, ?NewsletterCampaign $campaign = null): string
     {
-        return $this->vervang($html, $recipient, ontsnappen: true);
+        return $this->vervang($html, $recipient, ontsnappen: true, campaign: $campaign);
     }
 
     /**
@@ -234,13 +287,16 @@ class CampaignRenderer
      * Dit is veilig omdat een header geen HTML rendert. Gebruik dit nergens
      * anders voor: alles wat wel in de HTML van de mail belandt hoort door
      * substitute() te gaan.
+     *
+     * Geen campagne nodig: een onderwerp bevat nooit een :block_{n}:-
+     * plaatshouder (die zit alleen in de HTML-body).
      */
     public function substitutePlainText(string $tekst, NewsletterCampaignRecipient $recipient): string
     {
-        return $this->vervang($tekst, $recipient, ontsnappen: false);
+        return $this->vervang($tekst, $recipient, ontsnappen: false, campaign: null);
     }
 
-    private function vervang(string $html, NewsletterCampaignRecipient $recipient, bool $ontsnappen): string
+    private function vervang(string $html, NewsletterCampaignRecipient $recipient, bool $ontsnappen, ?NewsletterCampaign $campaign): string
     {
         $waarden = CampaignPersonalisation::valuesFor($recipient);
 
@@ -291,7 +347,7 @@ class CampaignRenderer
 
         return preg_replace_callback(
             '/:(\w+):/',
-            function (array $m) use ($waarden, $recipient): string {
+            function (array $m) use ($waarden, $recipient, $campaign): string {
                 if (array_key_exists($m[1], $waarden)) {
                     return $waarden[$m[1]];
                 }
@@ -304,10 +360,57 @@ class CampaignRenderer
                     return $this->klikUrl((int) $klik[1], $recipient);
                 }
 
+                // Zelfde soort late binding als de klikplaatshouders hierboven:
+                // een per-ontvanger-blok is pas hier bekend, niet vooraf.
+                if (preg_match('/^block_(\d+)$/', $m[1], $blok)) {
+                    return $this->blokVoorOntvanger((int) $blok[1], $recipient, $campaign ?? $recipient->campaign);
+                }
+
                 return $m[0];
             },
             $html
         );
+    }
+
+    /**
+     * Rendert één per-ontvanger-blok voor deze ontvanger. Het fragment gaat
+     * daarna door dezelfde link-omschrijving als de rest van de mail (alleen
+     * bij een opgeslagen campagne die kliks meet) en door de gewone
+     * plaatshoudervervanging, één niveau diep: een blok levert nooit een
+     * :block_n:-plaatshouder op, dus dit kan niet oneindig doorlopen.
+     */
+    private function blokVoorOntvanger(int $index, NewsletterCampaignRecipient $recipient, ?NewsletterCampaign $campaign): string
+    {
+        if (! $campaign) {
+            return '';
+        }
+
+        $block = $this->samengevoegdeBlokken($campaign)[$index] ?? null;
+        $type = $block['type'] ?? null;
+        $registry = cms()->emailBlocks();
+
+        if (! $type || ! isset($registry[$type])) {
+            return '';
+        }
+
+        $context = $this->contextVoor($campaign) + [
+            'recipientEmail' => (string) $recipient->email,
+            'subscriber' => $recipient->subscriber,
+        ];
+
+        $fragment = $registry[$type]::renderForRecipient($block['data'] ?? [], $context);
+
+        if ($fragment === '') {
+            return '';
+        }
+
+        if ($campaign->exists && $campaign->list?->track_clicks) {
+            $fragment = app(LinkRewriter::class)->rewrite($campaign, $fragment);
+        }
+
+        // Bewust zonder $campaign: een tweede :block_n: in het fragment kan
+        // niet bestaan, en zonder campagne rendert hij sowieso leeg.
+        return $this->vervang($fragment, $recipient, ontsnappen: true, campaign: null);
     }
 
     /**

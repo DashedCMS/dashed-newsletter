@@ -41,9 +41,9 @@ class CampaignGuard
 
         // Sinds de blokkenbouwer (taak 3) kan de inhoud van een campagne net
         // zo goed uit $campaign->blocks komen als uit het oude content-veld;
-        // CampaignRenderer::renderCampaignBody() valt alleen terug op content
-        // als er geen blocks zijn. Wie hier alleen op content bleef letten,
-        // weigerde elke campagne die alleen met blokken is opgebouwd.
+        // CampaignRenderer::samengevoegdeBlokken() valt alleen terug op
+        // content als er geen blocks zijn. Wie hier alleen op content bleef
+        // letten, weigerde elke campagne die alleen met blokken is opgebouwd.
         if (blank($campaign->content) && blank($campaign->blocks)) {
             return 'De campagne heeft geen inhoud.';
         }
