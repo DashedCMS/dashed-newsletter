@@ -269,11 +269,17 @@ class CampaignRenderer
      *
      * $campaign is nodig voor een eventuele :block_{n}:-plaatshouder (een
      * per-ontvanger-blok): zonder de campagne is de blokkenlijst niet opnieuw
-     * op te bouwen. Ontbreekt hij hier, dan valt vervang() terug op
+     * op te bouwen. Ontbreekt hij hier, dan valt deze publieke ingang terug op
      * $recipient->campaign (de opgeslagen verzendweg heeft die relatie altijd).
+     * Bewust hier en niet in vervang() zelf: substitutePlainText() en de
+     * geneste aanroep in blokVoorOntvanger() geven expliciet campaign: null
+     * mee en mogen dat niet via deze terugval alsnog omgezet zien worden in
+     * een echte campagne.
      */
     public function substitute(string $html, NewsletterCampaignRecipient $recipient, ?NewsletterCampaign $campaign = null): string
     {
+        $campaign ??= $recipient->campaign;
+
         return $this->vervang($html, $recipient, ontsnappen: true, campaign: $campaign);
     }
 
@@ -361,9 +367,14 @@ class CampaignRenderer
                 }
 
                 // Zelfde soort late binding als de klikplaatshouders hierboven:
-                // een per-ontvanger-blok is pas hier bekend, niet vooraf.
-                if (preg_match('/^block_(\d+)$/', $m[1], $blok)) {
-                    return $this->blokVoorOntvanger((int) $blok[1], $recipient, $campaign ?? $recipient->campaign);
+                // een per-ontvanger-blok is pas hier bekend, niet vooraf. Geen
+                // terugval op $recipient->campaign hier: substitute() heeft die
+                // terugval al toegepast vóórdat vervang() werd aangeroepen, en
+                // substitutePlainText() en de geneste aanroep vanuit
+                // blokVoorOntvanger() geven bewust campaign: null mee. Zonder
+                // campagne blijft de plaatshouder daarom gewoon staan.
+                if (preg_match('/^block_(\d+)$/', $m[1], $blok) && $campaign !== null) {
+                    return $this->blokVoorOntvanger((int) $blok[1], $recipient, $campaign);
                 }
 
                 return $m[0];
@@ -376,8 +387,11 @@ class CampaignRenderer
      * Rendert één per-ontvanger-blok voor deze ontvanger. Het fragment gaat
      * daarna door dezelfde link-omschrijving als de rest van de mail (alleen
      * bij een opgeslagen campagne die kliks meet) en door de gewone
-     * plaatshoudervervanging, één niveau diep: een blok levert nooit een
-     * :block_n:-plaatshouder op, dus dit kan niet oneindig doorlopen.
+     * plaatshoudervervanging, structureel één niveau diep: die geneste
+     * aanroep geeft campaign: null mee, en vervang() vervangt een
+     * :block_n:-plaatshouder alleen als er wél een campagne is (zie de guard
+     * in de closure daar) — dus zelfs een blok dat zelf per ongeluk zo'n
+     * plaatshouder in zijn fragment zou zetten, komt er niet doorheen.
      */
     private function blokVoorOntvanger(int $index, NewsletterCampaignRecipient $recipient, ?NewsletterCampaign $campaign): string
     {
@@ -408,8 +422,10 @@ class CampaignRenderer
             $fragment = app(LinkRewriter::class)->rewrite($campaign, $fragment);
         }
 
-        // Bewust zonder $campaign: een tweede :block_n: in het fragment kan
-        // niet bestaan, en zonder campagne rendert hij sowieso leeg.
+        // Bewust zonder $campaign: zonder campagne wordt een :block_n: nooit
+        // vervangen (blijft gewoon als plaatshouder staan, zie de guard in
+        // vervang()'s closure), dus een tweede blok binnen dit fragment kan
+        // hier niet alsnog resolven.
         return $this->vervang($fragment, $recipient, ontsnappen: true, campaign: null);
     }
 
