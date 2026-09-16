@@ -39,9 +39,25 @@ class NewsletterSuppression extends Model
 
     public static function blocks(string $siteId, string $email): bool
     {
+        return static::for($siteId, $email) !== null;
+    }
+
+    public static function for(string $siteId, string $email): ?self
+    {
         return static::where('site_id', $siteId)
             ->where('email', static::normalize($email))
-            ->exists();
+            ->first();
+    }
+
+    public static function reasonLabel(string $reason): string
+    {
+        return match ($reason) {
+            self::REASON_BOUNCE => 'bounce',
+            self::REASON_COMPLAINT => 'klacht',
+            self::REASON_MANUAL => 'handmatig geblokkeerd',
+            self::REASON_MARKETPLACE => 'marktplaats, zoals Bol.com',
+            default => $reason,
+        };
     }
 
     /**

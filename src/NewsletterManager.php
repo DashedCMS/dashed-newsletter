@@ -15,11 +15,13 @@ use Dashed\DashedNewsletter\Ai\Contracts\SearchTool;
 use Dashed\DashedNewsletter\Models\NewsletterConsent;
 use Dashed\DashedNewsletter\Models\NewsletterFieldValue;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
+use Dashed\DashedNewsletter\Models\NewsletterSuppression;
 use Dashed\DashedNewsletter\Events\NewsletterSubscribedEvent;
 use Dashed\DashedNewsletter\Exceptions\InvalidEmailException;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriberEvent;
 use Dashed\DashedNewsletter\Segments\SegmentConditionRegistry;
 use Dashed\DashedNewsletter\Events\NewsletterUnsubscribedEvent;
+use Dashed\DashedNewsletter\Exceptions\SuppressedEmailException;
 use Dashed\DashedNewsletter\Segments\Contracts\SegmentCondition;
 
 class NewsletterManager
@@ -126,6 +128,12 @@ class NewsletterManager
             throw new InvalidEmailException('Ongeldig e-mailadres.');
         }
 
+        // De blokkadelijst werd alleen bij het verzenden getoetst, en dan stond
+        // zo'n adres wel actief op de lijst maar kreeg het niets. Voor een
+        // Bol-klant is op de lijst staan al te veel, dus hier ook, en voor
+        // elke bron: een eigen aanmelding heft de blokkade niet op.
+        $this->weigerGeblokkeerd($list, $email);
+
         $isNieuweAanmelding = false;
 
         // Contact, veldwaarden, event en toestemming horen bij elkaar: gaat er
@@ -197,6 +205,8 @@ class NewsletterManager
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new InvalidEmailException('Ongeldig e-mailadres: ' . $contact->email);
         }
+
+        $this->weigerGeblokkeerd($list, $email);
 
         $statuses = [
             NewsletterSubscriber::STATUS_ACTIVE,
@@ -282,6 +292,18 @@ class NewsletterManager
 
             return $subscriber;
         });
+    }
+
+    /**
+     * @throws SuppressedEmailException
+     */
+    protected function weigerGeblokkeerd(NewsletterList $list, string $email): void
+    {
+        $suppression = NewsletterSuppression::for((string) $list->site_id, $email);
+
+        if ($suppression) {
+            throw SuppressedEmailException::for($suppression);
+        }
     }
 
     /**
