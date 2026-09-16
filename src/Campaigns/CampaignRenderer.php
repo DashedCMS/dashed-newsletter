@@ -418,7 +418,10 @@ class CampaignRenderer
             return '';
         }
 
-        if ($campaign->exists && $campaign->list?->track_clicks) {
+        // $recipient->id erbij: een proefmail voor een per-ontvanger-blok geeft
+        // een niet-opgeslagen ontvanger door, en LinkRewriter zou daar zonder
+        // deze guard alsnog een NewsletterCampaignLink-rij voor aanmaken.
+        if ($recipient->id && $campaign->exists && $campaign->list?->track_clicks) {
             $fragment = app(LinkRewriter::class)->rewrite($campaign, $fragment);
         }
 
