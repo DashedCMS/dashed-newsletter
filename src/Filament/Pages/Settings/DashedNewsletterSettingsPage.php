@@ -83,10 +83,10 @@ class DashedNewsletterSettingsPage extends Page
                 ->label(ucfirst($site['name']))
                 ->schema([
                     Select::make("newsletter_default_list_id_{$site['id']}")
-                        ->label('Standaardlijst')
-                        ->helperText('De lijst die vooraf gekozen staat als je een formulier aan de nieuwsbrief koppelt, en waar aanmeldingen op uitkomen die geen lijst meegeven. Laat leeg als je dat per keer wilt kiezen.')
+                        ->label(__('Standaardlijst'))
+                        ->helperText(__('De lijst die vooraf gekozen staat als je een formulier aan de nieuwsbrief koppelt, en waar aanmeldingen op uitkomen die geen lijst meegeven. Laat leeg als je dat per keer wilt kiezen.'))
                         ->options(NewsletterList::forSite($site['id'])->pluck('name', 'id')->all())
-                        ->placeholder('Geen standaardlijst')
+                        ->placeholder(__('Geen standaardlijst'))
                         ->columnSpanFull(),
                 ]);
         }
@@ -108,6 +108,6 @@ class DashedNewsletterSettingsPage extends Page
 
         $this->form->fill($formState);
 
-        Notification::make()->title('De nieuwsbrief instellingen zijn opgeslagen')->success()->send();
+        Notification::make()->title(__('De nieuwsbrief instellingen zijn opgeslagen'))->success()->send();
     }
 }

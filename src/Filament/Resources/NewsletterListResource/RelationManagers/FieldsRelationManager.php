@@ -73,38 +73,38 @@ class FieldsRelationManager extends RelationManager
     {
         return $schema->components([
             TextInput::make('label')
-                ->label('Label')
+                ->label(__('Label'))
                 ->required()
                 ->maxLength(255),
             TextInput::make('key')
-                ->label('Sleutel')
+                ->label(__('Sleutel'))
                 ->required()
                 ->maxLength(255)
-                ->helperText(fn (Get $get) => 'Relatievariabele in een campagne: :' . ($get('key') ?: 'sleutel') . ':'),
+                ->helperText(fn (Get $get) => __('Relatievariabele in een campagne: :variabele', ['variabele' => ':' . ($get('key') ?: __('sleutel')) . ':'])),
             Select::make('type')
-                ->label('Type')
+                ->label(__('Type'))
                 ->options(self::typeOptions())
                 ->required()
                 ->live()
                 ->default(NewsletterField::TYPE_TEXT)
                 ->disabled(fn (?NewsletterField $record) => self::hasValues($record))
                 ->helperText(fn (?NewsletterField $record) => self::hasValues($record)
-                    ? 'Dit veld heeft al ingevulde waarden. Het type kan niet meer gewijzigd worden, anders blijven value_number en value_date op de oude leest staan en gaat segmentatie stil verkeerd.'
+                    ? __('Dit veld heeft al ingevulde waarden. Het type kan niet meer gewijzigd worden, anders blijven value_number en value_date op de oude leest staan en gaat segmentatie stil verkeerd.')
                     : null),
             Toggle::make('required')
-                ->label('Verplicht'),
+                ->label(__('Verplicht')),
             TagsInput::make('options')
-                ->label('Opties')
-                ->helperText('Alleen van toepassing bij het type Selectie.')
+                ->label(__('Opties'))
+                ->helperText(__('Alleen van toepassing bij het type Selectie.'))
                 ->visible(fn (Get $get) => $get('type') === NewsletterField::TYPE_SELECT),
             TextInput::make('default_value')
-                ->label('Standaardwaarde')
+                ->label(__('Standaardwaarde'))
                 ->maxLength(255),
             Toggle::make('show_in_signup_form')
-                ->label('Tonen in aanmeldformulier')
+                ->label(__('Tonen in aanmeldformulier'))
                 ->default(true),
             TextInput::make('sort')
-                ->label('Sortering')
+                ->label(__('Sortering'))
                 ->numeric()
                 ->default(0),
         ]);
@@ -114,13 +114,13 @@ class FieldsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('label')->label('Label')->searchable(),
-                TextColumn::make('key')->label('Sleutel')->searchable(),
+                TextColumn::make('label')->label(__('Label'))->searchable(),
+                TextColumn::make('key')->label(__('Sleutel'))->searchable(),
                 TextColumn::make('type')
-                    ->label('Type')
+                    ->label(__('Type'))
                     ->badge()
                     ->formatStateUsing(fn (string $state) => self::typeOptions()[$state] ?? $state),
-                IconColumn::make('required')->label('Verplicht')->boolean(),
+                IconColumn::make('required')->label(__('Verplicht'))->boolean(),
             ])
             ->headerActions([
                 CreateAction::make(),
@@ -128,13 +128,13 @@ class FieldsRelationManager extends RelationManager
                 // knop of niets doen of iets terugzetten wat iemand net bewust
                 // heeft weggehaald.
                 Action::make('createDefaultFields')
-                    ->label('Standaardvelden aanmaken')
+                    ->label(__('Standaardvelden aanmaken'))
                     ->icon('heroicon-o-sparkles')
                     ->visible(fn (): bool => $this->getOwnerRecord()->fields()->doesntExist())
                     ->requiresConfirmation()
-                    ->modalHeading('Standaardvelden aanmaken')
-                    ->modalDescription('Dit maakt de velden Voornaam en Achternaam aan. Het e-mailadres staat al op het contact zelf en is geen apart veld.')
-                    ->modalSubmitActionLabel('Aanmaken')
+                    ->modalHeading(__('Standaardvelden aanmaken'))
+                    ->modalDescription(__('Dit maakt de velden Voornaam en Achternaam aan. Het e-mailadres staat al op het contact zelf en is geen apart veld.'))
+                    ->modalSubmitActionLabel(__('Aanmaken'))
                     ->action(function (): void {
                         foreach (self::defaultFields() as $sort => $field) {
                             $this->getOwnerRecord()->fields()->firstOrCreate(
@@ -148,7 +148,7 @@ class FieldsRelationManager extends RelationManager
                         }
 
                         Notification::make()
-                            ->title('Standaardvelden aangemaakt')
+                            ->title(__('Standaardvelden aangemaakt'))
                             ->success()
                             ->send();
                     }),

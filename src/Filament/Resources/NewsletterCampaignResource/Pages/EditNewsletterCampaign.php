@@ -53,11 +53,11 @@ class EditNewsletterCampaign extends EditRecord
     {
         return [
             Action::make('sendTest')
-                ->label('Testmail sturen')
+                ->label(__('Testmail sturen'))
                 ->icon('heroicon-o-beaker')
                 ->schema([
                     TextInput::make('email')
-                        ->label('Naar welk adres')
+                        ->label(__('Naar welk adres'))
                         ->email()
                         ->required()
                         ->default(fn () => auth()->user()?->email),
@@ -89,11 +89,11 @@ class EditNewsletterCampaign extends EditRecord
 
                     Mail::to($data['email'])->send(new NewsletterCampaignMail($campaign, $recipient));
 
-                    Notification::make()->title('Testmail verstuurd')->success()->send();
+                    Notification::make()->title(__('Testmail verstuurd'))->success()->send();
                 }),
 
             Action::make('send')
-                ->label('Verzenden')
+                ->label(__('Verzenden'))
                 ->icon('heroicon-o-paper-airplane')
                 // Spiegelbeeld van CampaignGuard::problem() en de claim in
                 // StartCampaignJob: die weigeren/claimen op precies 'sent' en
@@ -135,13 +135,13 @@ class EditNewsletterCampaign extends EditRecord
                         ->content(fn (): string => (string) NewsletterCampaignResource::trackingWarning($this->getRecord()->list)),
 
                     Radio::make('when')
-                        ->label('Wanneer')
-                        ->options(['now' => 'Nu verzenden', 'later' => 'Op een tijdstip'])
+                        ->label(__('Wanneer'))
+                        ->options(['now' => __('Nu verzenden'), 'later' => __('Op een tijdstip')])
                         ->default('now')
                         ->live()
                         ->required(),
                     DateTimePicker::make('scheduled_at')
-                        ->label('Tijdstip')
+                        ->label(__('Tijdstip'))
                         ->seconds(false)
                         ->required(fn (Get $get): bool => $get('when') === 'later')
                         ->visible(fn (Get $get): bool => $get('when') === 'later'),
@@ -155,7 +155,7 @@ class EditNewsletterCampaign extends EditRecord
                     $probleem = CampaignGuard::problem($campaign);
 
                     if ($probleem) {
-                        Notification::make()->title('Verzenden kan niet')->body($probleem)->danger()->send();
+                        Notification::make()->title(__('Verzenden kan niet'))->body($probleem)->danger()->send();
 
                         return;
                     }
@@ -166,7 +166,7 @@ class EditNewsletterCampaign extends EditRecord
                             'scheduled_at' => $data['scheduled_at'],
                         ]);
 
-                        Notification::make()->title('Campagne ingepland')->success()->send();
+                        Notification::make()->title(__('Campagne ingepland'))->success()->send();
 
                         return;
                     }
@@ -183,7 +183,7 @@ class EditNewsletterCampaign extends EditRecord
                     // campagne echt mag starten ligt in de job.
                     StartCampaignJob::dispatch($campaign->id);
 
-                    Notification::make()->title('Verzenden gestart')->success()->send();
+                    Notification::make()->title(__('Verzenden gestart'))->success()->send();
 
                     // Naar de bekijkpagina, en niet blijven staan. Zodra de
                     // job de status op 'sending' zet weigert

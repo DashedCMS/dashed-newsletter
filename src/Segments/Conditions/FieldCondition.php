@@ -31,22 +31,22 @@ class FieldCondition implements SegmentCondition
     {
         return [
             Select::make('key')
-                ->label('Veld')
+                ->label(__('Veld'))
                 ->options(fn () => NewsletterField::pluck('label', 'key')->all())
                 ->required(),
             Select::make('operator')
-                ->label('Vergelijking')
+                ->label(__('Vergelijking'))
                 ->options([
-                    'is' => 'is gelijk aan',
-                    'is_not' => 'is niet gelijk aan',
-                    'contains' => 'bevat',
-                    '>' => 'is groter dan',
-                    '<' => 'is kleiner dan',
-                    'is_empty' => 'is leeg',
+                    'is' => __('is gelijk aan'),
+                    'is_not' => __('is niet gelijk aan'),
+                    'contains' => __('bevat'),
+                    '>' => __('is groter dan'),
+                    '<' => __('is kleiner dan'),
+                    'is_empty' => __('is leeg'),
                 ])
                 ->required(),
             TextInput::make('value')
-                ->label('Waarde')
+                ->label(__('Waarde'))
                 ->visible(fn ($get) => $get('operator') !== 'is_empty'),
         ];
     }

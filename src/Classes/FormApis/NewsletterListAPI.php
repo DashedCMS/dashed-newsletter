@@ -62,7 +62,7 @@ class NewsletterListAPI
     {
         return [
             Select::make('newsletter_list_id')
-                ->label('Nieuwsbrieflijst')
+                ->label(__('Nieuwsbrieflijst'))
                 ->options(fn () => static::listOptions())
                 // De standaardlijst uit de instellingen staat vooraf gekozen.
                 // Blijft die leeg, dan kiest de redacteur zelf, zoals eerst.
@@ -87,8 +87,8 @@ class NewsletterListAPI
                 ])
                 ->columnSpanFull(),
             Textarea::make('consent_text')
-                ->label('Toestemmingstekst')
-                ->helperText('De tekst die naast het vinkje staat, letterlijk bewaard als bewijs. Laat je hem leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip, IP en bron, alleen zonder tekst erbij.')
+                ->label(__('Toestemmingstekst'))
+                ->helperText(__('De tekst die naast het vinkje staat, letterlijk bewaard als bewijs. Laat je hem leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip, IP en bron, alleen zonder tekst erbij.'))
                 ->rows(2),
         ];
     }

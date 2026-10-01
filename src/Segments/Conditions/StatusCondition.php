@@ -30,15 +30,15 @@ class StatusCondition implements SegmentCondition
     {
         return [
             Select::make('operator')
-                ->label('Vergelijking')
-                ->options(['is' => 'is', 'is_not' => 'is niet'])
+                ->label(__('Vergelijking'))
+                ->options(['is' => __('is'), 'is_not' => __('is niet')])
                 ->required(),
             Select::make('value')
-                ->label('Status')
+                ->label(__('Status'))
                 ->options([
-                    NewsletterSubscriber::STATUS_ACTIVE => 'Actief',
-                    NewsletterSubscriber::STATUS_UNSUBSCRIBED => 'Uitgeschreven',
-                    NewsletterSubscriber::STATUS_CLEANED => 'Opgeschoond',
+                    NewsletterSubscriber::STATUS_ACTIVE => __('Actief'),
+                    NewsletterSubscriber::STATUS_UNSUBSCRIBED => __('Uitgeschreven'),
+                    NewsletterSubscriber::STATUS_CLEANED => __('Opgeschoond'),
                 ])
                 ->required(),
         ];

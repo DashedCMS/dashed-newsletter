@@ -82,31 +82,31 @@ class NewsletterCampaignResource extends Resource
             // stond er in het beheer niets dan de statusnaam "Mislukt", en
             // moest een beheerder in de serverlogs van schedule:run zoeken om
             // te weten wat hij moest repareren.
-            Section::make('Mislukt')->columnSpanFull()
+            Section::make(__('Mislukt'))->columnSpanFull()
                 ->visible(fn (?NewsletterCampaign $record): bool => $record?->status === NewsletterCampaign::STATUS_FAILED)
                 ->schema([
                     Placeholder::make('failure_reason')
-                        ->label('Reden')
+                        ->label(__('Reden'))
                         ->content(fn (?NewsletterCampaign $record): string => $record?->failure_reason ?? 'Onbekend.'),
                 ]),
-            Section::make('Campagne')->columnSpanFull()->columns(2)->schema([
+            Section::make(__('Campagne'))->columnSpanFull()->columns(2)->schema([
                 // Zelfde vorm als NewsletterListResource: bij één site verborgen
                 // en ingevuld door CreateNewsletterCampaign, bij meerdere sites
                 // zichtbaar en bepalend voor de lijst-opties hieronder. Zonder
                 // deze filter is een lijst van een andere site te kiezen, en dan
                 // gaat de campagne naar mensen op een site waar hij niet bij hoort.
                 Select::make('site_id')
-                    ->label('Actief op site')
+                    ->label(__('Actief op site'))
                     ->options(collect(Sites::getSites())->pluck('name', 'id')->toArray())
                     ->default(fn () => Sites::getFirstSite()['id'])
                     ->required()
                     ->live()
                     ->afterStateUpdated(fn (Set $set) => $set('newsletter_list_id', null))
                     ->hidden(fn (): bool => ! (Sites::getAmountOfSites() > 1)),
-                TextInput::make('name')->label('Naam')->required()->maxLength(255)
-                    ->helperText('Alleen voor jezelf, dit komt niet in de mail.'),
+                TextInput::make('name')->label(__('Naam'))->required()->maxLength(255)
+                    ->helperText(__('Alleen voor jezelf, dit komt niet in de mail.')),
                 Select::make('newsletter_list_id')
-                    ->label('Lijst')
+                    ->label(__('Lijst'))
                     ->options(fn (Get $get): array => NewsletterList::forSite($get('site_id'))->pluck('name', 'id')->all())
                     ->required()
                     ->live()
@@ -114,9 +114,9 @@ class NewsletterCampaignResource extends Resource
                     // niet mee te lopen naar een andere lijst.
                     ->afterStateUpdated(fn (Set $set) => $set('preview_subscriber_id', null)),
                 Select::make('newsletter_segment_id')
-                    ->label('Segment')
-                    ->placeholder('De hele lijst')
-                    ->helperText('Laat leeg om naar iedereen op de lijst te sturen.')
+                    ->label(__('Segment'))
+                    ->placeholder(__('De hele lijst'))
+                    ->helperText(__('Laat leeg om naar iedereen op de lijst te sturen.'))
                     ->options(fn (Get $get): array => $get('newsletter_list_id')
                         ? NewsletterSegment::where('newsletter_list_id', $get('newsletter_list_id'))->pluck('name', 'id')->all()
                         : []),
@@ -125,17 +125,17 @@ class NewsletterCampaignResource extends Resource
                 // emails.shell), dus zonder ->live(onBlur: true) hier bleef de
                 // preview hangen op wat erin stond toen de blokken voor het
                 // laatst bewerkt werden.
-                TextInput::make('subject')->label('Onderwerp')->required()->maxLength(255)
+                TextInput::make('subject')->label(__('Onderwerp'))->required()->maxLength(255)
                     ->live(onBlur: true),
-                TextInput::make('preheader')->label('Preheader')->maxLength(255)
-                    ->helperText('De regel die een mailbox naast het onderwerp toont.')
+                TextInput::make('preheader')->label(__('Preheader'))->maxLength(255)
+                    ->helperText(__('De regel die een mailbox naast het onderwerp toont.'))
                     ->live(onBlur: true),
-                TextInput::make('from_email')->label('Afzenderadres')->email()
-                    ->helperText('Laat leeg om dat van de lijst te gebruiken.'),
-                TextInput::make('reply_to_email')->label('Antwoordadres')->email(),
+                TextInput::make('from_email')->label(__('Afzenderadres'))->email()
+                    ->helperText(__('Laat leeg om dat van de lijst te gebruiken.')),
+                TextInput::make('reply_to_email')->label(__('Antwoordadres'))->email(),
             ]),
             Grid::make(2)->columnSpanFull()->schema([
-                Section::make('Inhoud')->schema([
+                Section::make(__('Inhoud'))->schema([
                     // Het voorstel van fase 1, onderweg naar fase 2. Geen kolom
                     // en dehydrated(false): het bestaat alleen tijdens het
                     // bewerken, precies als preview_subscriber_id hieronder.
@@ -156,16 +156,16 @@ class NewsletterCampaignResource extends Resource
                         ->live(onBlur: true)
                         ->columnSpanFull(),
                 ]),
-                Section::make('Voorbeeld')->schema([
+                Section::make(__('Voorbeeld'))->schema([
                     // Geen echt formuliervele: alleen om te kiezen als wie
                     // de preview eruitziet. dehydrated(false) zodat dit nooit
                     // meegaat bij het opslaan van de campagne — er bestaat
                     // geen kolom voor, en dat hoort ook niet, want de keuze
                     // is alleen voor tijdens het bewerken.
                     Select::make('preview_subscriber_id')
-                        ->label('Voorbeeldcontact')
-                        ->placeholder('Voorbeeldwaarden')
-                        ->helperText('Toont de mail met de echte veldwaarden van dit contact. Leeg toont de terugvalwaarden.')
+                        ->label(__('Voorbeeldcontact'))
+                        ->placeholder(__('Voorbeeldwaarden'))
+                        ->helperText(__('Toont de mail met de echte veldwaarden van dit contact. Leeg toont de terugvalwaarden.'))
                         ->searchable()
                         ->live()
                         ->dehydrated(false)
@@ -183,14 +183,14 @@ class NewsletterCampaignResource extends Resource
                     // doen. Als formulierveld overleeft hij die herbouw, net
                     // als het voorbeeldcontact hierboven.
                     ToggleButtons::make('preview_breedte')
-                        ->label('Weergave')
+                        ->label(__('Weergave'))
                         ->inline()
                         ->default('breed')
                         ->live()
                         ->dehydrated(false)
                         ->options([
-                            'breed' => 'Breed',
-                            'smal' => 'Telefoon',
+                            'breed' => __('Breed'),
+                            'smal' => __('Telefoon'),
                         ]),
                     Livewire::make(CampaignPreview::class, fn (Get $get, ?NewsletterCampaign $record): array => [
                         'campaignId' => $record?->id ?? 0,
@@ -234,10 +234,10 @@ class NewsletterCampaignResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('Naam')->searchable()->sortable(),
-                TextColumn::make('list.name')->label('Lijst'),
-                TextColumn::make('segment.name')->label('Segment')->placeholder('Hele lijst'),
-                TextColumn::make('status')->label('Status')->badge()
+                TextColumn::make('name')->label(__('Naam'))->searchable()->sortable(),
+                TextColumn::make('list.name')->label(__('Lijst')),
+                TextColumn::make('segment.name')->label(__('Segment'))->placeholder(__('Hele lijst')),
+                TextColumn::make('status')->label(__('Status'))->badge()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
                 // Alleen tonen bij een werkelijk mislukte campagne, niet
                 // zomaar bij elke gevulde waarde: StartCampaignJob wist
@@ -247,11 +247,11 @@ class NewsletterCampaignResource extends Resource
                 // de waarde leeg is vóórdat het formatteren gebeurt, dus een
                 // formatter die null teruggeeft levert een leeg vakje op in
                 // plaats van het streepje dat alle andere rijen tonen.
-                TextColumn::make('failure_reason')->label('Reden mislukt')->placeholder('-')->wrap()
+                TextColumn::make('failure_reason')->label(__('Reden mislukt'))->placeholder('-')->wrap()
                     ->state(fn (NewsletterCampaign $record): ?string => $record->status === NewsletterCampaign::STATUS_FAILED ? $record->failure_reason : null),
-                TextColumn::make('sent_count')->label('Verzonden')
+                TextColumn::make('sent_count')->label(__('Verzonden'))
                     ->state(fn (NewsletterCampaign $record): string => $record->sent_count . ' van ' . $record->recipients_count),
-                TextColumn::make('scheduled_at')->label('Ingepland')->dateTime()->placeholder('-'),
+                TextColumn::make('scheduled_at')->label(__('Ingepland'))->dateTime()->placeholder('-'),
             ])
             ->recordActions([
                 // Alleen zichtbaar tijdens 'sending': de enige status waar iets
@@ -261,14 +261,14 @@ class NewsletterCampaignResource extends Resource
                 // bewerkpagina al af, dus die knop zou daar nooit te bereiken
                 // zijn.
                 Action::make('cancel')
-                    ->label('Afbreken')
+                    ->label(__('Afbreken'))
                     ->icon('heroicon-o-stop-circle')
                     ->color('danger')
                     ->visible(fn (NewsletterCampaign $record): bool => $record->status === NewsletterCampaign::STATUS_SENDING)
                     ->requiresConfirmation()
-                    ->modalHeading('Campagne afbreken')
+                    ->modalHeading(__('Campagne afbreken'))
                     ->modalDescription(fn (NewsletterCampaign $record): string => self::cancelWarningDescription($record))
-                    ->modalSubmitActionLabel('Afbreken')
+                    ->modalSubmitActionLabel(__('Afbreken'))
                     ->action(fn (NewsletterCampaign $record) => CampaignCanceller::cancel($record)),
                 ViewAction::make(),
                 EditAction::make(),
@@ -396,11 +396,12 @@ class NewsletterCampaignResource extends Resource
         $count = $record->recipients()->count();
 
         if ($count === 0) {
-            return 'Deze campagne heeft nog geen ontvangers. Weet je zeker dat je hem wilt verwijderen?';
+            return __('Deze campagne heeft nog geen ontvangers. Weet je zeker dat je hem wilt verwijderen?');
         }
 
-        return 'Deze campagne heeft ' . $count . ' ' . ($count === 1 ? 'ontvanger' : 'ontvangers')
-            . ' in de verzendgeschiedenis. Die gaat mee weg bij het verwijderen. Dit is niet terug te draaien.';
+        return $count === 1
+            ? __('Deze campagne heeft 1 ontvanger in de verzendgeschiedenis. Die gaat mee weg bij het verwijderen. Dit is niet terug te draaien.')
+            : __('Deze campagne heeft :aantal ontvangers in de verzendgeschiedenis. Die gaat mee weg bij het verwijderen. Dit is niet terug te draaien.', ['aantal' => $count]);
     }
 
     /**
@@ -415,12 +416,16 @@ class NewsletterCampaignResource extends Resource
             NewsletterCampaignRecipient::STATUS_SENDING,
         ])->count();
 
-        $verzondenZin = $verzonden === 0
-            ? 'Nog niemand heeft deze campagne gehad.'
-            : $verzonden . ' ' . ($verzonden === 1 ? 'ontvanger heeft' : 'ontvangers hebben')
-                . ' deze campagne al gehad; dat blijft zo, er wordt niets teruggedraaid.';
+        $verzondenZin = match (true) {
+            $verzonden === 0 => __('Nog niemand heeft deze campagne gehad.'),
+            $verzonden === 1 => __('1 ontvanger heeft deze campagne al gehad; dat blijft zo, er wordt niets teruggedraaid.'),
+            default => __(':aantal ontvangers hebben deze campagne al gehad; dat blijft zo, er wordt niets teruggedraaid.', ['aantal' => $verzonden]),
+        };
 
-        return $verzondenZin . ' De resterende ' . $openstaand . ' ' . ($openstaand === 1 ? 'ontvanger' : 'ontvangers')
-            . ' ' . ($openstaand === 1 ? 'krijgt' : 'krijgen') . ' hem niet meer. Dit is niet terug te draaien.';
+        $openstaandZin = $openstaand === 1
+            ? __('De resterende 1 ontvanger krijgt hem niet meer. Dit is niet terug te draaien.')
+            : __('De resterende :aantal ontvangers krijgen hem niet meer. Dit is niet terug te draaien.', ['aantal' => $openstaand]);
+
+        return $verzondenZin . ' ' . $openstaandZin;
     }
 }

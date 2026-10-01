@@ -29,7 +29,7 @@ class WebVersionBlock extends EmailBlock
 
     public static function label(): string
     {
-        return 'Bekijk in je browser';
+        return __('Bekijk in je browser');
     }
 
     public static function filamentBlock(): Block
@@ -38,7 +38,7 @@ class WebVersionBlock extends EmailBlock
             ->label(self::label())
             ->icon('heroicon-o-globe-alt')
             ->schema([
-                TextInput::make('label')->label('Tekst')->default('Bekijk deze mail in je browser'),
+                TextInput::make('label')->label(__('Tekst'))->default('Bekijk deze mail in je browser'),
             ]);
     }
 

@@ -36,7 +36,7 @@ class UnsubscribeBlock extends EmailBlock
 
     public static function label(): string
     {
-        return 'Afmeldlink';
+        return __('Afmeldlink');
     }
 
     public static function filamentBlock(): Block
@@ -45,7 +45,7 @@ class UnsubscribeBlock extends EmailBlock
             ->label(self::label())
             ->icon('heroicon-o-arrow-right-on-rectangle')
             ->schema([
-                TextInput::make('label')->label('Tekst van de link')->default('Afmelden'),
+                TextInput::make('label')->label(__('Tekst van de link'))->default('Afmelden'),
             ]);
     }
 

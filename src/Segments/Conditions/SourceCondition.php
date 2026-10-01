@@ -30,14 +30,14 @@ class SourceCondition implements SegmentCondition
     {
         return [
             Select::make('operator')
-                ->label('Vergelijking')
-                ->options(['is' => 'is', 'is_not' => 'is niet'])
+                ->label(__('Vergelijking'))
+                ->options(['is' => __('is'), 'is_not' => __('is niet')])
                 ->required(),
             // Net als bij StatusCondition verplicht: een lege waarde levert een
             // voorwaarde op die nooit waar is, maar er in het scherm uitziet
             // alsof hij iets doet.
             TextInput::make('value')
-                ->label('Bron')
+                ->label(__('Bron'))
                 ->required(),
         ];
     }

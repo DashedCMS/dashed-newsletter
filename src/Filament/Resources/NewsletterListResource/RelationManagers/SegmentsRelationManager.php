@@ -165,22 +165,22 @@ class SegmentsRelationManager extends RelationManager
                 ->columnSpanFull(),
 
             TextInput::make('name')
-                ->label('Naam')
+                ->label(__('Naam'))
                 ->required()
                 ->maxLength(255),
 
             Select::make('rules.operator')
-                ->label('Combineer voorwaarden met')
+                ->label(__('Combineer voorwaarden met'))
                 ->options([
-                    'and' => 'En (alle voorwaarden moeten kloppen)',
-                    'or' => 'Of (één voorwaarde is al genoeg)',
+                    'and' => __('En (alle voorwaarden moeten kloppen)'),
+                    'or' => __('Of (één voorwaarde is al genoeg)'),
                 ])
                 ->default('and')
                 ->required(),
 
             Repeater::make('rules.children')
-                ->label('Voorwaarden')
-                ->addActionLabel('Voorwaarde toevoegen')
+                ->label(__('Voorwaarden'))
+                ->addActionLabel(__('Voorwaarde toevoegen'))
                 ->reorderableWithButtons()
                 ->collapsible()
                 ->defaultItems(0)
@@ -192,7 +192,7 @@ class SegmentsRelationManager extends RelationManager
                 ->minItems(1)
                 ->schema([
                     Select::make('condition')
-                        ->label('Voorwaarde')
+                        ->label(__('Voorwaarde'))
                         ->options(fn (): array => self::conditionOptions())
                         ->required()
                         ->live()
@@ -218,9 +218,9 @@ class SegmentsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('Naam')->searchable(),
+                TextColumn::make('name')->label(__('Naam'))->searchable(),
                 TextColumn::make('contact_count')
-                    ->label('Aantal contacten')
+                    ->label(__('Aantal contacten'))
                     // Bewust cachedCount(), niet count(): anders draait er bij
                     // elke render van deze tabel een zware query per rij.
                     ->state(function (NewsletterSegment $record): string {
@@ -234,18 +234,18 @@ class SegmentsRelationManager extends RelationManager
                     ->color(fn (string $state): string => $state === 'Ongeldig segment' ? 'danger' : 'gray'),
             ])
             ->headerActions([
-                CreateAction::make()->label('Nieuw segment'),
+                CreateAction::make()->label(__('Nieuw segment')),
             ])
             ->recordActions([
                 Action::make('refreshCount')
-                    ->label('Ververs telling')
+                    ->label(__('Ververs telling'))
                     ->icon('heroicon-o-arrow-path')
                     ->action(function (NewsletterSegment $record): void {
                         try {
                             $count = SegmentQuery::cachedCount($record, forget: true);
                         } catch (InvalidSegmentException $e) {
                             Notification::make()
-                                ->title('Ongeldig segment')
+                                ->title(__('Ongeldig segment'))
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();
@@ -254,17 +254,17 @@ class SegmentsRelationManager extends RelationManager
                         }
 
                         Notification::make()
-                            ->title('Telling ververst')
-                            ->body($count . ' ' . ($count === 1 ? 'contact voldoet' : 'contacten voldoen') . ' aan dit segment.')
+                            ->title(__('Telling ververst'))
+                            ->body($count === 1 ? __('1 contact voldoet aan dit segment.') : __(':aantal contacten voldoen aan dit segment.', ['aantal' => $count]))
                             ->success()
                             ->send();
                     }),
                 Action::make('previewSubscribers')
-                    ->label('Toon eerste vijftig')
+                    ->label(__('Toon eerste vijftig'))
                     ->icon('heroicon-o-eye')
-                    ->modalHeading('Eerste vijftig contacten in dit segment')
+                    ->modalHeading(__('Eerste vijftig contacten in dit segment'))
                     ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Sluiten')
+                    ->modalCancelActionLabel(__('Sluiten'))
                     ->modalContent(fn (NewsletterSegment $record) => self::previewSubscribersContent($record)),
                 EditAction::make(),
                 DeleteAction::make(),

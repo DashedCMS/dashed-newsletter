@@ -197,8 +197,8 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
     {
         cms()->registerRetention(
             Retention::make('campaign_clicks')
-                ->label('Kliks in nieuwsbrieven')
-                ->pakket('dashed-newsletter', 'Nieuwsbrief')
+                ->label(__('Kliks in nieuwsbrieven'))
+                ->pakket('dashed-newsletter', __('Nieuwsbrief'))
                 ->tabel('dashed__newsletter_campaign_clicks')
                 ->termijn(
                     // Gemeten vanaf clicked_at en niet vanaf created_at: dat is
@@ -209,8 +209,8 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                     // Termijn::waarde() laat dat niet door en gooit dan, zodat
                     // het opruimen faalt in plaats van elke klik te wissen.
                     Termijn::make('campaign_clicks', fn () => (int) config('dashed-newsletter.clicks.retention_days', 365), 'clicked_at')
-                        ->label('Kliks bewaren (dagen)')
-                        ->uitleg('De losse kliks per ontvanger. De totalen per campagne blijven staan. Standaard: 365 dagen.')
+                        ->label(__('Kliks bewaren (dagen)'))
+                        ->uitleg(__('De losse kliks per ontvanger. De totalen per campagne blijven staan. Standaard: 365 dagen.'))
                 )
         );
     }

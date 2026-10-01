@@ -78,12 +78,12 @@ class NewsletterSubscriberResource extends Resource
             && $get('status') === NewsletterSubscriber::STATUS_ACTIVE;
 
         return Textarea::make('reactivation_consent_text')
-            ->label('Reden van heractivering')
+            ->label(__('Reden van heractivering'))
             ->rows(2)
             ->columnSpanFull()
             ->visible($isReactivation)
             ->required($isReactivation)
-            ->helperText('Dit contact was uitgeschreven. Leg vast waarom het weer actief mag worden, bijvoorbeeld wat de klant je heeft laten weten. De tekst wordt letterlijk als nieuw toestemmingsbewijs opgeslagen.');
+            ->helperText(__('Dit contact was uitgeschreven. Leg vast waarom het weer actief mag worden, bijvoorbeeld wat de klant je heeft laten weten. De tekst wordt letterlijk als nieuw toestemmingsbewijs opgeslagen.'));
     }
 
     /**
@@ -140,25 +140,25 @@ class NewsletterSubscriberResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Contact')->columnSpanFull()->schema([
+            Section::make(__('Contact'))->columnSpanFull()->schema([
                 TextInput::make('email')
-                    ->label('E-mailadres')
+                    ->label(__('E-mailadres'))
                     ->disabled()
-                    ->helperText('Het e-mailadres is hier niet te wijzigen. Het toestemmingsbewijs (zie hieronder) hoort bij dit adres; wijzig je het hier stilletjes, dan verwijst dat bewijs naar een adres dat niet meer klopt met wat er in de kolom staat.'),
+                    ->helperText(__('Het e-mailadres is hier niet te wijzigen. Het toestemmingsbewijs (zie hieronder) hoort bij dit adres; wijzig je het hier stilletjes, dan verwijst dat bewijs naar een adres dat niet meer klopt met wat er in de kolom staat.')),
                 Select::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->options(self::statusOptions())
                     ->required()
                     ->live(),
                 TextInput::make('source')
-                    ->label('Bron')
+                    ->label(__('Bron'))
                     ->maxLength(255),
                 self::reactivationConsentField(),
             ])->columns(2),
 
             // De velden van de lijst waar dit contact op staat. Zonder deze
             // sectie kon je ze op dit scherm niet zien en niet wijzigen.
-            Section::make('Velden')
+            Section::make(__('Velden'))
                 ->columnSpanFull()
                 ->visible(fn (?NewsletterSubscriber $record): bool => ($record?->list?->fields()->exists()) ?? false)
                 ->schema(fn (?NewsletterSubscriber $record): array => self::fieldComponents($record?->list))
@@ -170,21 +170,21 @@ class NewsletterSubscriberResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('email')->label('E-mailadres')->searchable(),
-                TextColumn::make('list.name')->label('Lijst')->sortable(),
+                TextColumn::make('email')->label(__('E-mailadres'))->searchable(),
+                TextColumn::make('list.name')->label(__('Lijst'))->sortable(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->badge()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
-                TextColumn::make('source')->label('Bron'),
-                TextColumn::make('subscribed_at')->label('Aangemeld op')->dateTime()->sortable(),
+                TextColumn::make('source')->label(__('Bron')),
+                TextColumn::make('subscribed_at')->label(__('Aangemeld op'))->dateTime()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('newsletter_list_id')
-                    ->label('Lijst')
+                    ->label(__('Lijst'))
                     ->relationship('list', 'name'),
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->options(self::statusOptions()),
             ])
             ->recordActions([
@@ -245,16 +245,16 @@ class NewsletterSubscriberResource extends Resource
     public static function infolist(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Contact')->columnSpanFull()->schema([
-                TextEntry::make('email')->label('E-mailadres'),
-                TextEntry::make('list.name')->label('Lijst'),
+            Section::make(__('Contact'))->columnSpanFull()->schema([
+                TextEntry::make('email')->label(__('E-mailadres')),
+                TextEntry::make('list.name')->label(__('Lijst')),
                 TextEntry::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->badge()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
-                TextEntry::make('source')->label('Bron')->default('-'),
-                TextEntry::make('subscribed_at')->label('Aangemeld op')->dateTime(),
-                TextEntry::make('unsubscribed_at')->label('Uitgeschreven op')->dateTime()->placeholder('-'),
+                TextEntry::make('source')->label(__('Bron'))->default('-'),
+                TextEntry::make('subscribed_at')->label(__('Aangemeld op'))->dateTime(),
+                TextEntry::make('unsubscribed_at')->label(__('Uitgeschreven op'))->dateTime()->placeholder('-'),
             ])->columns(3),
 
             // Zonder deze sectie is een veldwaarde nergens in het beheer te zien
@@ -262,7 +262,7 @@ class NewsletterSubscriberResource extends Resource
             // er wel staan. Lege waarden krijgen een streepje in plaats van te
             // verdwijnen: het verschil tussen "leeg" en "niet gevraagd" is hier
             // precies wat je wilt zien.
-            Section::make('Velden')
+            Section::make(__('Velden'))
                 ->columnSpanFull()
                 ->visible(fn (NewsletterSubscriber $record): bool => $record->list?->fields()->exists() ?? false)
                 ->schema([
@@ -270,15 +270,15 @@ class NewsletterSubscriberResource extends Resource
                         ->label('')
                         ->columnSpanFull()
                         ->schema([
-                            TextEntry::make('field.label')->label('Veld'),
-                            TextEntry::make('value')->label('Waarde')->placeholder('-'),
+                            TextEntry::make('field.label')->label(__('Veld')),
+                            TextEntry::make('value')->label(__('Waarde'))->placeholder('-'),
                         ])
                         ->columns(2),
                 ]),
 
             // events() staat al aflopend gesorteerd op het model: de
             // nieuwste gebeurtenis staat bovenaan de tijdlijn.
-            Section::make('Tijdlijn')
+            Section::make(__('Tijdlijn'))
                 ->columnSpanFull()
                 ->schema([
                     RepeatableEntry::make('events')
@@ -286,27 +286,27 @@ class NewsletterSubscriberResource extends Resource
                         ->columnSpanFull()
                         ->schema([
                             TextEntry::make('type')
-                                ->label('Type')
+                                ->label(__('Type'))
                                 ->formatStateUsing(fn (string $state) => self::eventTypeLabels()[$state] ?? $state),
                             TextEntry::make('payload')
-                                ->label('Toelichting')
+                                ->label(__('Toelichting'))
                                 ->getStateUsing(fn ($record) => self::eventDescription($record->payload)),
-                            TextEntry::make('created_at')->label('Tijdstip')->dateTime(),
+                            TextEntry::make('created_at')->label(__('Tijdstip'))->dateTime(),
                         ])
                         ->columns(3),
                 ]),
 
-            Section::make('Toestemmingsbewijs')
+            Section::make(__('Toestemmingsbewijs'))
                 ->columnSpanFull()
                 ->schema([
                     RepeatableEntry::make('consents')
                         ->label('')
                         ->columnSpanFull()
                         ->schema([
-                            TextEntry::make('given_at')->label('Tijdstip')->dateTime(),
-                            TextEntry::make('ip')->label('IP')->default('-'),
-                            TextEntry::make('source')->label('Bron')->default('-'),
-                            TextEntry::make('consent_text')->label('Toestemmingstekst')->default('-')->columnSpanFull(),
+                            TextEntry::make('given_at')->label(__('Tijdstip'))->dateTime(),
+                            TextEntry::make('ip')->label(__('IP'))->default('-'),
+                            TextEntry::make('source')->label(__('Bron'))->default('-'),
+                            TextEntry::make('consent_text')->label(__('Toestemmingstekst'))->default('-')->columnSpanFull(),
                         ])
                         ->columns(3),
                 ]),

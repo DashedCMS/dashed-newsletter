@@ -18,19 +18,19 @@ class DuplicateCampaignAction
     public static function make(): Action
     {
         return Action::make('duplicateCampaign')
-            ->label('Dupliceren')
+            ->label(__('Dupliceren'))
             ->icon('heroicon-o-document-duplicate')
             ->color('gray')
-            ->modalHeading('Campagne dupliceren')
-            ->modalDescription('De kopie krijgt dezelfde inhoud, lijst en afzender, en begint als concept. Er gaan geen ontvangers en geen cijfers mee.')
-            ->modalSubmitActionLabel('Dupliceren')
+            ->modalHeading(__('Campagne dupliceren'))
+            ->modalDescription(__('De kopie krijgt dezelfde inhoud, lijst en afzender, en begint als concept. Er gaan geen ontvangers en geen cijfers mee.'))
+            ->modalSubmitActionLabel(__('Dupliceren'))
             ->requiresConfirmation()
             ->action(function (NewsletterCampaign $record) {
                 $kopie = $record->duplicate();
 
                 Notification::make()
-                    ->title('Kopie gemaakt')
-                    ->body('Je werkt nu in de kopie. Het origineel is ongewijzigd.')
+                    ->title(__('Kopie gemaakt'))
+                    ->body(__('Je werkt nu in de kopie. Het origineel is ongewijzigd.'))
                     ->success()
                     ->send();
 

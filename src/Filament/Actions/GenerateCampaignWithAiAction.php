@@ -43,33 +43,33 @@ class GenerateCampaignWithAiAction
     public static function plan(): Action
     {
         return Action::make('generateCampaignPlanWithAi')
-            ->label('Opstellen met AI')
+            ->label(__('Opstellen met AI'))
             ->icon('heroicon-o-sparkles')
             ->modalWidth(Width::TwoExtraLarge)
-            ->modalHeading('Waar gaat deze nieuwsbrief over?')
-            ->modalDescription('De AI zoekt zelf in je webshop en artikelen en komt met een voorstel. Je ziet dat voorstel voordat er iets geschreven wordt.')
-            ->modalSubmitActionLabel('Zoek en stel voor')
+            ->modalHeading(__('Waar gaat deze nieuwsbrief over?'))
+            ->modalDescription(__('De AI zoekt zelf in je webshop en artikelen en komt met een voorstel. Je ziet dat voorstel voordat er iets geschreven wordt.'))
+            ->modalSubmitActionLabel(__('Zoek en stel voor'))
             ->visible(fn (): bool => self::beschikbaar())
             ->schema([
                 TextInput::make('audience')
-                    ->label('Voor wie')
-                    ->placeholder('Bijvoorbeeld: vaste klanten die vorig jaar tuinmeubels kochten')
+                    ->label(__('Voor wie'))
+                    ->placeholder(__('Bijvoorbeeld: vaste klanten die vorig jaar tuinmeubels kochten'))
                     ->required(),
                 TextInput::make('occasion')
-                    ->label('Aanleiding')
-                    ->placeholder('Bijvoorbeeld: de zomeractie begint')
+                    ->label(__('Aanleiding'))
+                    ->placeholder(__('Bijvoorbeeld: de zomeractie begint'))
                     ->required(),
                 TextInput::make('promote')
-                    ->label('Wat promoten')
-                    ->placeholder('Bijvoorbeeld: het nieuwe tuinmeubilair'),
+                    ->label(__('Wat promoten'))
+                    ->placeholder(__('Bijvoorbeeld: het nieuwe tuinmeubilair')),
                 Radio::make('length')
-                    ->label('Gewenste lengte')
+                    ->label(__('Gewenste lengte'))
                     ->options(CampaignBriefing::LENGTHS)
                     ->default('gemiddeld')
                     ->required(),
                 Textarea::make('instruction')
-                    ->label('Eigen aanwijzing')
-                    ->placeholder('Bijvoorbeeld: geen uitroeptekens, en noem de gratis verzending')
+                    ->label(__('Eigen aanwijzing'))
+                    ->placeholder(__('Bijvoorbeeld: geen uitroeptekens, en noem de gratis verzending'))
                     ->rows(3),
             ])
             ->action(function (array $data, Get $get, Set $set): void {
@@ -81,7 +81,7 @@ class GenerateCampaignWithAiAction
                 } catch (AiGenerationFailedException $e) {
                     // Alles of niets: er verandert niets aan de campagne.
                     Notification::make()
-                        ->title('Het opstellen lukte niet')
+                        ->title(__('Het opstellen lukte niet'))
                         ->body($e->getMessage())
                         ->danger()
                         ->send();
@@ -93,8 +93,8 @@ class GenerateCampaignWithAiAction
                 $set('ai_briefing', $data);
 
                 Notification::make()
-                    ->title('Er ligt een voorstel')
-                    ->body('Klik op "AI-voorstel bekijken" om het na te lopen en de nieuwsbrief te laten schrijven.')
+                    ->title(__('Er ligt een voorstel'))
+                    ->body(__('Klik op "AI-voorstel bekijken" om het na te lopen en de nieuwsbrief te laten schrijven.'))
                     ->success()
                     ->send();
             });
@@ -103,13 +103,13 @@ class GenerateCampaignWithAiAction
     public static function apply(): Action
     {
         return Action::make('applyCampaignAiPlan')
-            ->label('AI-voorstel bekijken')
+            ->label(__('AI-voorstel bekijken'))
             ->icon('heroicon-o-clipboard-document-check')
             ->color('gray')
             ->modalWidth(Width::TwoExtraLarge)
-            ->modalHeading('Het voorstel')
-            ->modalDescription('Haal eruit wat je niet wilt. Alleen wat je laat staan mag in de mail komen.')
-            ->modalSubmitActionLabel('Schrijf de nieuwsbrief')
+            ->modalHeading(__('Het voorstel'))
+            ->modalDescription(__('Haal eruit wat je niet wilt. Alleen wat je laat staan mag in de mail komen.'))
+            ->modalSubmitActionLabel(__('Schrijf de nieuwsbrief'))
             ->visible(fn (Get $get): bool => self::beschikbaar() && filled($get('ai_plan')))
             ->fillForm(fn ($livewire): array => [
                 // Alles staat aan: de redacteur haalt eruit, hij bouwt niet op.
@@ -118,23 +118,23 @@ class GenerateCampaignWithAiAction
             ])
             ->schema([
                 Placeholder::make('outline')
-                    ->label('Voorgestelde opbouw')
+                    ->label(__('Voorgestelde opbouw'))
                     ->content(fn ($livewire): HtmlString => self::opbouw($livewire)),
                 CheckboxList::make('keep_products')
-                    ->label('Producten')
+                    ->label(__('Producten'))
                     ->options(fn ($livewire): array => self::keuzes($livewire, 'products'))
                     ->descriptions(fn ($livewire): array => self::redenen($livewire, 'products'))
                     ->bulkToggleable()
                     ->visible(fn ($livewire): bool => self::keuzes($livewire, 'products') !== []),
                 CheckboxList::make('keep_articles')
-                    ->label('Artikelen')
+                    ->label(__('Artikelen'))
                     ->options(fn ($livewire): array => self::keuzes($livewire, 'articles'))
                     ->descriptions(fn ($livewire): array => self::redenen($livewire, 'articles'))
                     ->bulkToggleable()
                     ->visible(fn ($livewire): bool => self::keuzes($livewire, 'articles') !== []),
                 Textarea::make('adjustment')
-                    ->label('Bijsturen')
-                    ->placeholder('Bijvoorbeeld: maak het korter, en begin met het artikel')
+                    ->label(__('Bijsturen'))
+                    ->placeholder(__('Bijvoorbeeld: maak het korter, en begin met het artikel'))
                     ->rows(3),
             ])
             ->action(function (array $data, $livewire, Set $set): void {
@@ -155,7 +155,7 @@ class GenerateCampaignWithAiAction
                     // kan proberen met een andere bijsturing zonder de hele
                     // zoekronde over te doen.
                     Notification::make()
-                        ->title('Het schrijven lukte niet')
+                        ->title(__('Het schrijven lukte niet'))
                         ->body($e->getMessage())
                         ->danger()
                         ->send();
@@ -182,8 +182,8 @@ class GenerateCampaignWithAiAction
                 $set('ai_briefing', null);
 
                 Notification::make()
-                    ->title('De nieuwsbrief staat in het formulier')
-                    ->body('Lees hem na voordat je hem verstuurt, en sla daarna op. Er is nog niets opgeslagen.')
+                    ->title(__('De nieuwsbrief staat in het formulier'))
+                    ->body(__('Lees hem na voordat je hem verstuurt, en sla daarna op. Er is nog niets opgeslagen.'))
                     ->success()
                     ->send();
             });

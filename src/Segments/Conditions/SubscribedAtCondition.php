@@ -30,14 +30,14 @@ class SubscribedAtCondition implements SegmentCondition
     {
         return [
             Select::make('operator')
-                ->label('Vergelijking')
+                ->label(__('Vergelijking'))
                 ->options([
-                    'last_days' => 'in de laatste x dagen',
-                    'before_days' => 'langer dan x dagen geleden',
+                    'last_days' => __('in de laatste x dagen'),
+                    'before_days' => __('langer dan x dagen geleden'),
                 ])
                 ->required(),
             TextInput::make('value')
-                ->label('Aantal dagen')
+                ->label(__('Aantal dagen'))
                 ->numeric()
                 ->required(),
         ];

@@ -27,8 +27,8 @@ class RecipientsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('email')->label('Adres')->searchable()->sortable(),
-                TextColumn::make('status')->label('Status')->badge()
+                TextColumn::make('email')->label(__('Adres'))->searchable()->sortable(),
+                TextColumn::make('status')->label(__('Status'))->badge()
                     ->formatStateUsing(fn (string $state): string => self::statusLabels()[$state] ?? $state)
                     ->color(fn (string $state): string => match ($state) {
                         NewsletterCampaignRecipient::STATUS_SENT => 'success',
@@ -41,24 +41,24 @@ class RecipientsRelationManager extends RelationManager
                 // CampaignSender), en een bounce heeft zijn eigen reden. Voor
                 // wie dit scherm opent is het een vraag: waarom kreeg deze
                 // persoon niets.
-                TextColumn::make('reden')->label('Reden')->wrap()->placeholder('-')
+                TextColumn::make('reden')->label(__('Reden'))->wrap()->placeholder('-')
                     ->state(fn (NewsletterCampaignRecipient $record): ?string => $record->bounce_reason
                         ?: (self::skipLabels()[$record->skip_reason] ?? $record->skip_reason)),
-                TextColumn::make('sent_at')->label('Verzonden')->dateTime()->placeholder('-')->sortable(),
-                TextColumn::make('delivered_at')->label('Bezorgd')->dateTime()->placeholder('-')->sortable(),
-                TextColumn::make('opened_at')->label('Geopend')->dateTime()->placeholder('-')->sortable()
+                TextColumn::make('sent_at')->label(__('Verzonden'))->dateTime()->placeholder('-')->sortable(),
+                TextColumn::make('delivered_at')->label(__('Bezorgd'))->dateTime()->placeholder('-')->sortable(),
+                TextColumn::make('opened_at')->label(__('Geopend'))->dateTime()->placeholder('-')->sortable()
                     ->description(fn (NewsletterCampaignRecipient $record): ?string => $record->open_count > 1
-                        ? $record->open_count . ' keer'
+                        ? __(':aantal keer', ['aantal' => $record->open_count])
                         : null),
-                TextColumn::make('clicked_at')->label('Geklikt')->dateTime()->placeholder('-')->sortable()
+                TextColumn::make('clicked_at')->label(__('Geklikt'))->dateTime()->placeholder('-')->sortable()
                     ->description(fn (NewsletterCampaignRecipient $record): ?string => $record->click_count > 1
-                        ? $record->click_count . ' keer'
+                        ? __(':aantal keer', ['aantal' => $record->click_count])
                         : null),
-                IconColumn::make('unsubscribed_at')->label('Afgemeld')->boolean()
+                IconColumn::make('unsubscribed_at')->label(__('Afgemeld'))->boolean()
                     ->state(fn (NewsletterCampaignRecipient $record): bool => $record->unsubscribed_at !== null),
             ])
             ->filters([
-                SelectFilter::make('status')->label('Status')->options(self::statusLabels()),
+                SelectFilter::make('status')->label(__('Status'))->options(self::statusLabels()),
             ])
             ->defaultSort('email')
             ->headerActions([])

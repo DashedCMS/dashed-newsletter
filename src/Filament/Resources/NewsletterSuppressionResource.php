@@ -59,7 +59,7 @@ class NewsletterSuppressionResource extends Resource
         // site_id wordt daarom altijd gevuld met Sites::getActive() in
         // mutateDataUsing hieronder, niet met een keuze uit het formulier.
         return $schema->components([
-            TextInput::make('email')->label('E-mailadres')->email()->required()
+            TextInput::make('email')->label(__('E-mailadres'))->email()->required()
                 ->dehydrateStateUsing(fn (string $state): string => NewsletterSuppression::normalize($state))
                 // Zonder dit vangt de unieke index op site_id + email de
                 // dubbele regel pas af bij het opslaan, met een ruwe
@@ -71,9 +71,9 @@ class NewsletterSuppressionResource extends Resource
                         $fail('Dit e-mailadres staat al op de blokkadelijst.');
                     }
                 }),
-            Select::make('reason')->label('Reden')->options(self::reasonOptions())
+            Select::make('reason')->label(__('Reden'))->options(self::reasonOptions())
                 ->default(NewsletterSuppression::REASON_MANUAL)->required(),
-            Textarea::make('notes')->label('Aantekening')->rows(2),
+            Textarea::make('notes')->label(__('Aantekening'))->rows(2),
         ]);
     }
 
@@ -81,18 +81,18 @@ class NewsletterSuppressionResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('email')->label('E-mailadres')->searchable(),
-                TextColumn::make('reason')->label('Reden')->badge()
+                TextColumn::make('email')->label(__('E-mailadres'))->searchable(),
+                TextColumn::make('reason')->label(__('Reden'))->badge()
                     ->formatStateUsing(fn (string $state) => self::reasonOptions()[$state] ?? $state),
-                TextColumn::make('source')->label('Bron')->placeholder('-'),
-                TextColumn::make('created_at')->label('Sinds')->dateTime()->sortable(),
+                TextColumn::make('source')->label(__('Bron'))->placeholder('-'),
+                TextColumn::make('created_at')->label(__('Sinds'))->dateTime()->sortable(),
             ])
             ->headerActions([
                 // Geen site-select om uit te lezen (zie form()): site_id komt
                 // hier altijd van de actieve site, ongeacht wat er verder in
                 // $data staat.
                 CreateAction::make()
-                    ->label('Adres blokkeren')
+                    ->label(__('Adres blokkeren'))
                     ->mutateDataUsing(function (array $data): array {
                         $data['site_id'] = Sites::getActive();
 
@@ -122,13 +122,12 @@ class NewsletterSuppressionResource extends Resource
         // dient ook als terugvaltekst voor een reden die hier niet expliciet
         // benoemd is.
         return match ($record->reason) {
-            NewsletterSuppression::REASON_MANUAL => 'Dit adres is met de hand geblokkeerd. Verwijderen heft de blokkade op: de eerstvolgende nieuwsbrief gaat er weer naartoe.',
-            NewsletterSuppression::REASON_MARKETPLACE => 'Dit adres kwam via een marktplaats zoals Bol.com binnen. Die klant is klant van de marktplaats en heeft jou geen toestemming gegeven, dus die mag geen nieuwsbrief krijgen. Verwijder deze regel alleen als je zeker weet dat deze persoon zich daarnaast zelf heeft aangemeld.',
-            NewsletterSuppression::REASON_COMPLAINT => 'Dit adres is geblokkeerd vanwege een spamklacht. Anders dan bij een onbestelbaar adres kwam deze mail wel aan: '
-                . 'de ontvanger heeft hem gezien en zelf als spam gemeld. Verwijderen zet dit adres tegen zijn eigen wil terug op de lijst. '
-                . 'De eerstvolgende nieuwsbrief gaat er dan weer naartoe.',
-            default => 'Dit adres is geblokkeerd vanwege "' . (self::reasonOptions()[$record->reason] ?? $record->reason) . '". De vorige keer kwam de mail terug; '
-                . 'verwijderen betekent dat je aanneemt dat dit adres nu weer werkt. De eerstvolgende nieuwsbrief gaat er dan weer naartoe.',
+            NewsletterSuppression::REASON_MANUAL => __('Dit adres is met de hand geblokkeerd. Verwijderen heft de blokkade op: de eerstvolgende nieuwsbrief gaat er weer naartoe.'),
+            NewsletterSuppression::REASON_MARKETPLACE => __('Dit adres kwam via een marktplaats zoals Bol.com binnen. Die klant is klant van de marktplaats en heeft jou geen toestemming gegeven, dus die mag geen nieuwsbrief krijgen. Verwijder deze regel alleen als je zeker weet dat deze persoon zich daarnaast zelf heeft aangemeld.'),
+            NewsletterSuppression::REASON_COMPLAINT => __('Dit adres is geblokkeerd vanwege een spamklacht. Anders dan bij een onbestelbaar adres kwam deze mail wel aan: de ontvanger heeft hem gezien en zelf als spam gemeld. Verwijderen zet dit adres tegen zijn eigen wil terug op de lijst. De eerstvolgende nieuwsbrief gaat er dan weer naartoe.'),
+            default => __('Dit adres is geblokkeerd vanwege ":reden". De vorige keer kwam de mail terug; verwijderen betekent dat je aanneemt dat dit adres nu weer werkt. De eerstvolgende nieuwsbrief gaat er dan weer naartoe.', [
+                'reden' => self::reasonOptions()[$record->reason] ?? $record->reason,
+            ]),
         };
     }
 

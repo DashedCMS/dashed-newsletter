@@ -39,21 +39,21 @@ class ViewNewsletterCampaign extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Campagne')->columnSpanFull()->columns(3)->schema([
-                TextEntry::make('name')->label('Naam'),
-                TextEntry::make('list.name')->label('Lijst'),
-                TextEntry::make('segment.name')->label('Segment')->placeholder('Hele lijst'),
-                TextEntry::make('subject')->label('Onderwerp'),
-                TextEntry::make('preheader')->label('Preheader')->placeholder('-'),
-                TextEntry::make('status')->label('Status')->badge()
+            Section::make(__('Campagne'))->columnSpanFull()->columns(3)->schema([
+                TextEntry::make('name')->label(__('Naam')),
+                TextEntry::make('list.name')->label(__('Lijst')),
+                TextEntry::make('segment.name')->label(__('Segment'))->placeholder(__('Hele lijst')),
+                TextEntry::make('subject')->label(__('Onderwerp')),
+                TextEntry::make('preheader')->label(__('Preheader'))->placeholder('-'),
+                TextEntry::make('status')->label(__('Status'))->badge()
                     ->formatStateUsing(fn (string $state): string => NewsletterCampaignResource::statusOptions()[$state] ?? $state),
-                TextEntry::make('started_at')->label('Gestart')->dateTime()->placeholder('-'),
-                TextEntry::make('completed_at')->label('Afgerond')->dateTime()->placeholder('-'),
-                TextEntry::make('failure_reason')->label('Reden mislukt')->placeholder('-')
+                TextEntry::make('started_at')->label(__('Gestart'))->dateTime()->placeholder('-'),
+                TextEntry::make('completed_at')->label(__('Afgerond'))->dateTime()->placeholder('-'),
+                TextEntry::make('failure_reason')->label(__('Reden mislukt'))->placeholder('-')
                     ->visible(fn (NewsletterCampaign $record): bool => $record->status === NewsletterCampaign::STATUS_FAILED),
             ]),
 
-            Section::make('Cijfers')->columnSpanFull()->schema([
+            Section::make(__('Cijfers'))->columnSpanFull()->schema([
                 ViewEntry::make('statistieken')
                     ->view('dashed-newsletter::filament.campaign-statistics')
                     ->viewData(fn (NewsletterCampaign $record): array => [
@@ -62,7 +62,7 @@ class ViewNewsletterCampaign extends ViewRecord
                     ]),
             ]),
 
-            Section::make('Waarom mensen zich afmeldden')->columnSpanFull()->collapsible()->schema([
+            Section::make(__('Waarom mensen zich afmeldden'))->columnSpanFull()->collapsible()->schema([
                 ViewEntry::make('afmeldredenen')
                     ->view('dashed-newsletter::filament.unsubscribe-reasons')
                     ->viewData(fn (NewsletterCampaign $record): array => [
@@ -74,7 +74,7 @@ class ViewNewsletterCampaign extends ViewRecord
                     ]),
             ]),
 
-            Section::make('De mail')->collapsible()->columnSpanFull()->schema([
+            Section::make(__('De mail'))->collapsible()->columnSpanFull()->schema([
                 ViewEntry::make('mail')
                     ->view('dashed-newsletter::filament.campaign-preview')
                     ->viewData(fn (NewsletterCampaign $record): array => [

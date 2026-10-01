@@ -48,17 +48,17 @@ class SubscribersRelationManager extends RelationManager
             // onafgevangen QueryException op de unique index zodra het nieuwe
             // adres al op deze lijst stond.
             TextInput::make('email')
-                ->label('E-mailadres')
+                ->label(__('E-mailadres'))
                 ->disabled()
-                ->helperText('Het e-mailadres is hier niet te wijzigen. Het toestemmingsbewijs hoort bij dit adres; wijzig je het hier stilletjes, dan verwijst dat bewijs naar een adres dat niet meer klopt met wat er in de kolom staat.'),
+                ->helperText(__('Het e-mailadres is hier niet te wijzigen. Het toestemmingsbewijs hoort bij dit adres; wijzig je het hier stilletjes, dan verwijst dat bewijs naar een adres dat niet meer klopt met wat er in de kolom staat.')),
             Select::make('status')
-                ->label('Status')
+                ->label(__('Status'))
                 ->options(self::statusOptions())
                 ->default(NewsletterSubscriber::STATUS_ACTIVE)
                 ->required()
                 ->live(),
             TextInput::make('source')
-                ->label('Bron')
+                ->label(__('Bron'))
                 ->maxLength(255),
             // Zelfde veld als op het losse bewerkscherm: heractiveren vraagt om
             // een nieuw toestemmingsbewijs, ongeacht via welk scherm het gaat.
@@ -98,18 +98,18 @@ class SubscribersRelationManager extends RelationManager
             // anders staat er een query per contact per pagina.
             ->modifyQueryUsing(fn ($query) => $query->with('fieldValues'))
             ->columns([
-                TextColumn::make('email')->label('E-mailadres')->searchable(),
+                TextColumn::make('email')->label(__('E-mailadres'))->searchable(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->badge()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
-                TextColumn::make('source')->label('Bron'),
+                TextColumn::make('source')->label(__('Bron')),
                 ...$this->fieldColumns(),
-                TextColumn::make('subscribed_at')->label('Aangemeld op')->dateTime()->sortable(),
+                TextColumn::make('subscribed_at')->label(__('Aangemeld op'))->dateTime()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->options(self::statusOptions()),
             ])
             ->headerActions([
@@ -119,20 +119,20 @@ class SubscribersRelationManager extends RelationManager
                 // die twee kan een handmatig toegevoegd contact niet aantonen
                 // waarom het op de lijst staat.
                 CreateAction::make()
-                    ->label('Nieuw contact')
+                    ->label(__('Nieuw contact'))
                     ->schema([
                         // Bewust geen ->email(): Newsletter::subscribe() is de
                         // enige plek die bepaalt of een adres geldig is, dus
                         // een ongeldig adres moet hier doorheen komen en pas
                         // daar worden afgewezen (zie de catch hieronder).
                         TextInput::make('email')
-                            ->label('E-mailadres')
+                            ->label(__('E-mailadres'))
                             ->required()
                             ->maxLength(255),
                         Textarea::make('consent_text')
-                            ->label('Toestemmingstekst')
+                            ->label(__('Toestemmingstekst'))
                             ->rows(2)
-                            ->helperText('Wat als bewijs van toestemming bewaard wordt, bijvoorbeeld wat de beheerder de klant heeft horen of zien bevestigen. Laat je het leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip en bron, alleen zonder tekst erbij.'),
+                            ->helperText(__('Wat als bewijs van toestemming bewaard wordt, bijvoorbeeld wat de beheerder de klant heeft horen of zien bevestigen. Laat je het leeg, dan wordt de toestemming zelf nog steeds vastgelegd met tijdstip en bron, alleen zonder tekst erbij.')),
                         // De velden van deze lijst zaten hier niet in, dus een
                         // handmatig toegevoegd contact begon altijd zonder
                         // voornaam en moest daarna alsnog bewerkt worden.
@@ -157,7 +157,7 @@ class SubscribersRelationManager extends RelationManager
                             );
                         } catch (\InvalidArgumentException $e) {
                             Notification::make()
-                                ->title('Contact kon niet worden toegevoegd')
+                                ->title(__('Contact kon niet worden toegevoegd'))
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();

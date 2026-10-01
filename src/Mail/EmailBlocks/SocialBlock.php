@@ -38,7 +38,7 @@ class SocialBlock extends EmailBlock
 
     public static function label(): string
     {
-        return 'Sociale media';
+        return __('Sociale media');
     }
 
     public static function filamentBlock(): Block
@@ -48,10 +48,10 @@ class SocialBlock extends EmailBlock
             ->icon('heroicon-o-share')
             ->schema([
                 Repeater::make('links')
-                    ->label('Kanalen')
+                    ->label(__('Kanalen'))
                     ->schema([
-                        Select::make('channel')->label('Kanaal')->options(self::KANALEN)->required(),
-                        TextInput::make('url')->label('Link')->url(),
+                        Select::make('channel')->label(__('Kanaal'))->options(self::KANALEN)->required(),
+                        TextInput::make('url')->label(__('Link'))->url(),
                     ])
                     ->columns(2),
             ]);
