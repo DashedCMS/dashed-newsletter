@@ -31,6 +31,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('dashed-newsletter')
+            ->hasTranslations()
             // De tijdstempels in deze namen zijn geen sier en de volgorde van
             // deze lijst is niet wat telt. Laravel's migrator sorteert alle
             // geregistreerde migraties op bestandsnaam, dus zonder voorvoegsel
