@@ -33,6 +33,8 @@ use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\RelationMa
 
 class NewsletterListResource extends Resource
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesResourceLabels;
+
     protected static ?string $model = NewsletterList::class;
 
     protected static ?string $recordTitleAttribute = 'name';

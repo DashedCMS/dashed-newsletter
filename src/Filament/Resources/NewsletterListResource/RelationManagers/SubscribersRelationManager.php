@@ -25,6 +25,8 @@ use Dashed\DashedNewsletter\Filament\Resources\NewsletterSubscriberResource;
 
 class SubscribersRelationManager extends RelationManager
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesRelationManagerLabels;
+
     protected static string $relationship = 'subscribers';
 
     protected static ?string $title = 'Contacten';

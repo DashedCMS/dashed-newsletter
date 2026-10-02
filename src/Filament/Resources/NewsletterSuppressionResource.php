@@ -23,6 +23,8 @@ use Dashed\DashedNewsletter\Filament\Resources\NewsletterSuppressionResource\Pag
 
 class NewsletterSuppressionResource extends Resource
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesResourceLabels;
+
     protected static ?string $model = NewsletterSuppression::class;
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-no-symbol';

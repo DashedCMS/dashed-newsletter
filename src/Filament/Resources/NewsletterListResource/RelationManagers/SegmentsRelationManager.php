@@ -34,6 +34,8 @@ use Dashed\DashedNewsletter\Segments\Exceptions\InvalidSegmentException;
 
 class SegmentsRelationManager extends RelationManager
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesRelationManagerLabels;
+
     protected static string $relationship = 'segments';
 
     protected static ?string $title = 'Segmenten';

@@ -47,6 +47,8 @@ use Dashed\DashedNewsletter\Filament\Resources\NewsletterCampaignResource\Relati
 
 class NewsletterCampaignResource extends Resource
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesResourceLabels;
+
     protected static ?string $model = NewsletterCampaign::class;
 
     protected static ?string $recordTitleAttribute = 'name';

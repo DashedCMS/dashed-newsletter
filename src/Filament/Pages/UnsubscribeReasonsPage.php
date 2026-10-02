@@ -20,6 +20,8 @@ use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
  */
 class UnsubscribeReasonsPage extends Page
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesPageLabels;
+
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-hand-raised';
 
     protected static string | UnitEnum | null $navigationGroup = 'Communicatie';

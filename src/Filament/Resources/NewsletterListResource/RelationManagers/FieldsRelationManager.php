@@ -26,6 +26,8 @@ use Filament\Resources\RelationManagers\RelationManager;
 
 class FieldsRelationManager extends RelationManager
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesRelationManagerLabels;
+
     protected static string $relationship = 'fields';
 
     protected static ?string $title = 'Velden';

@@ -19,6 +19,8 @@ use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
  */
 class RecipientsRelationManager extends RelationManager
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesRelationManagerLabels;
+
     protected static string $relationship = 'recipients';
 
     protected static ?string $title = 'Ontvangers';

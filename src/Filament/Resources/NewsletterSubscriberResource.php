@@ -33,6 +33,8 @@ use Dashed\DashedNewsletter\Filament\Resources\NewsletterSubscriberResource\Page
 
 class NewsletterSubscriberResource extends Resource
 {
+    use \Dashed\DashedCore\Filament\Concerns\TranslatesResourceLabels;
+
     protected static ?string $model = NewsletterSubscriber::class;
 
     protected static ?string $recordTitleAttribute = 'email';
