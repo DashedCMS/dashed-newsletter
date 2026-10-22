@@ -24,6 +24,7 @@ class NewsletterList extends Model
     protected $attributes = [
         'track_opens' => true,
         'track_clicks' => true,
+        'recognize_visitors' => false,
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class NewsletterList extends Model
         'footer_blocks' => 'array',
         'track_opens' => 'boolean',
         'track_clicks' => 'boolean',
+        'recognize_visitors' => 'boolean',
         'send_rate_per_minute' => 'integer',
     ];
 

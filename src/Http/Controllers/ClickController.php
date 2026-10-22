@@ -7,6 +7,7 @@ namespace Dashed\DashedNewsletter\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Dashed\DashedNewsletter\Campaigns\SignedLink;
+use Dashed\DashedNewsletter\Visitors\VisitorRecognition;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignLink;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignClick;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
@@ -40,18 +41,29 @@ class ClickController
             abort(404);
         }
 
+        $regel = null;
+
         if (SignedLink::isValid($request)) {
-            $this->legVast($linkRegel, $recipient);
+            $regel = $this->legVast($linkRegel, $recipient);
         } else {
             $this->meldOngeldigeHandtekening($request, 'klik');
         }
 
         // away() en niet to(): dit is een externe bestemming. De waarde komt
         // uit onze eigen tabel, zie de toelichting hierboven.
-        return redirect()->away($linkRegel->url);
+        $response = redirect()->away($linkRegel->url);
+
+        // Alleen na een geldige handtekening, en alleen als de lijst het
+        // toestaat (VisitorRecognition). Een verminkte link herkent niemand.
+        $subscriber = $regel?->subscriber;
+        if ($subscriber && VisitorRecognition::mayRecognize($subscriber)) {
+            $response->withCookie(VisitorRecognition::cookieFor($subscriber));
+        }
+
+        return $response;
     }
 
-    private function legVast(NewsletterCampaignLink $link, int $recipient): void
+    private function legVast(NewsletterCampaignLink $link, int $recipient): ?NewsletterCampaignRecipient
     {
         // Ook op campagne matchen en niet alleen op id: verdediging in de
         // diepte naast de handtekening, zodat een geldig ondertekende link van
@@ -61,7 +73,7 @@ class ClickController
             ->first();
 
         if (! $regel) {
-            return;
+            return null;
         }
 
         NewsletterCampaignClick::create([
@@ -75,6 +87,8 @@ class ClickController
             'clicked_at' => $regel->clicked_at ?? now(),
             'click_count' => $regel->click_count + 1,
         ])->save();
+
+        return $regel;
     }
 
     /**

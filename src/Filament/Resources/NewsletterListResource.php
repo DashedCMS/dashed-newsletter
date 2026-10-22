@@ -122,6 +122,10 @@ class NewsletterListResource extends Resource
                         ->label(__('Klikken meten'))
                         ->default(true)
                         ->helperText(__('Stuurt de links in de mail via deze website, zodat je ziet waarop geklikt wordt. De ontvanger komt op dezelfde pagina uit.')),
+                    Toggle::make('recognize_visitors')
+                        ->label(__('Bezoekers herkennen na een klik'))
+                        ->default(false)
+                        ->helperText(__('Na een klik in de mail onthoudt de website dertig dagen wie de bezoeker is, zodat popups op een segment kunnen richten. Dit is het volgen van een bezoeker: noem het in de privacyverklaring van de site voordat je het aanzet. Werkt alleen met Klikken meten aan.')),
                     Builder::make('header_blocks')
                         ->label(__('Header'))
                         ->blocks(fn (): array => NewsletterCampaignResource::newsletterBlocks())

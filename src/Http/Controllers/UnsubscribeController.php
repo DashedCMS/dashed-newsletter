@@ -9,6 +9,7 @@ use Illuminate\Routing\Controller;
 use Dashed\DashedNewsletter\Facades\Newsletter;
 use Dashed\DashedNewsletter\Campaigns\SignedLink;
 use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
+use Dashed\DashedNewsletter\Visitors\VisitorRecognition;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 
 /**
@@ -145,10 +146,11 @@ class UnsubscribeController extends Controller
 
     private function klaar(NewsletterCampaignRecipient $row)
     {
+        // Wie zich afmeldt wordt ook niet meer herkend (VisitorRecognition).
         return response()->view('dashed-newsletter::unsubscribed', [
             'email' => $row->email,
             'listName' => $row->subscriber->list?->name,
             'resubscribeUrl' => SignedLink::to('dashed.frontend.newsletter.resubscribe', ['recipient' => $row->id]),
-        ]);
+        ])->withCookie(VisitorRecognition::forgetCookie());
     }
 }
