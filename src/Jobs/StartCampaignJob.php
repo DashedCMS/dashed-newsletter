@@ -9,6 +9,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Dashed\DashedNewsletter\Campaigns\CampaignTaskMirror;
 use Dashed\DashedNewsletter\Campaigns\CampaignGuard;
 use Dashed\DashedNewsletter\Models\NewsletterCampaign;
 use Dashed\DashedNewsletter\Campaigns\CampaignRenderer;
@@ -155,5 +156,7 @@ class StartCampaignJob implements ShouldQueue
                 'completed_at' => now(),
             ]);
         }
+
+        CampaignTaskMirror::sync($campaign->fresh() ?? $campaign);
     }
 }
