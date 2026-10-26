@@ -84,6 +84,9 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        // Ingeplande en verzonden campagnes op de campagnekalender van dashed-core.
+        \Dashed\DashedNewsletter\Campaigns\CampaignCalendarSource::register();
+
         $this->app->booted(function (): void {
             app(\Illuminate\Console\Scheduling\Schedule::class)
                 ->command('dashed:send-scheduled-campaigns')
