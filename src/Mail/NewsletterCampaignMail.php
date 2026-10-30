@@ -52,6 +52,9 @@ class NewsletterCampaignMail extends Mailable
      * De List-Unsubscribe-koppen laten een mailbox een afmeldknop tonen naast
      * de mail. Gmail en Yahoo eisen ze sinds 2024 van bulkverzenders, en de
      * One-Click-variant vereist dat de URL ook op POST reageert.
+     *
+     * X-PM-Track-Links staat uit: de links lopen al via de eigen klikroute, en
+     * adblockers blokkeren Postmarks track.pstmrk.it met een waarschuwingsscherm.
      */
     public function headers(): Headers
     {
@@ -60,6 +63,7 @@ class NewsletterCampaignMail extends Mailable
         return new Headers(text: [
             'List-Unsubscribe' => '<' . $url . '>',
             'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+            'X-PM-Track-Links' => 'None',
         ]);
     }
 
