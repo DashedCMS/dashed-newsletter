@@ -237,9 +237,9 @@ class NewsletterCampaignResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label(__('Naam'))->searchable()->sortable(),
-                TextColumn::make('list.name')->label(__('Lijst')),
-                TextColumn::make('segment.name')->label(__('Segment'))->placeholder(__('Hele lijst')),
-                TextColumn::make('status')->label(__('Status'))->badge()
+                TextColumn::make('list.name')->label(__('Lijst'))->sortable(),
+                TextColumn::make('segment.name')->label(__('Segment'))->placeholder(__('Hele lijst'))->sortable(),
+                TextColumn::make('status')->label(__('Status'))->badge()->sortable()
                     ->formatStateUsing(fn (string $state) => self::statusOptions()[$state] ?? $state),
                 // Alleen tonen bij een werkelijk mislukte campagne, niet
                 // zomaar bij elke gevulde waarde: StartCampaignJob wist
@@ -249,11 +249,11 @@ class NewsletterCampaignResource extends Resource
                 // de waarde leeg is vóórdat het formatteren gebeurt, dus een
                 // formatter die null teruggeeft levert een leeg vakje op in
                 // plaats van het streepje dat alle andere rijen tonen.
-                TextColumn::make('failure_reason')->label(__('Reden mislukt'))->placeholder('-')->wrap()
+                TextColumn::make('failure_reason')->label(__('Reden mislukt'))->placeholder('-')->wrap()->sortable()
                     ->state(fn (NewsletterCampaign $record): ?string => $record->status === NewsletterCampaign::STATUS_FAILED ? $record->failure_reason : null),
-                TextColumn::make('sent_count')->label(__('Verzonden'))
+                TextColumn::make('sent_count')->label(__('Verzonden'))->sortable()
                     ->state(fn (NewsletterCampaign $record): string => $record->sent_count . ' van ' . $record->recipients_count),
-                TextColumn::make('scheduled_at')->label(__('Ingepland'))->dateTime()->placeholder('-'),
+                TextColumn::make('scheduled_at')->label(__('Ingepland'))->dateTime()->placeholder('-')->sortable(),
             ])
             ->recordActions([
                 // Alleen zichtbaar tijdens 'sending': de enige status waar iets
