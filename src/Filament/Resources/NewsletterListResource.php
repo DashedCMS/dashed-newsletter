@@ -22,6 +22,7 @@ use Filament\Forms\Components\ColorPicker;
 use Dashed\DashedCore\Models\Customsetting;
 use Filament\Infolists\Components\ViewEntry;
 use Dashed\DashedNewsletter\Models\NewsletterList;
+use Dashed\DashedNewsletter\Models\NewsletterSubscriber;
 use Dashed\DashedNewsletter\Campaigns\UnsubscribeReasons;
 use Dashed\DashedNewsletter\Models\NewsletterCampaignRecipient;
 use Dashed\DashedNewsletter\Filament\Resources\NewsletterListResource\Pages\EditNewsletterList;
@@ -162,6 +163,17 @@ class NewsletterListResource extends Resource
                 TextColumn::make('subscribers_count')
                     ->label(__('Contacten'))
                     ->counts('subscribers')
+                    ->sortable(),
+                // Het totaal telt ook afgemelde en opgeschoonde contacten, die
+                // nooit een campagne krijgen. Alleen "Actief" zegt hoeveel mensen
+                // een mail naar deze lijst bereikt.
+                TextColumn::make('active_subscribers_count')
+                    ->label(__('Actief'))
+                    ->counts(['subscribers as active_subscribers_count' => fn ($query) => $query->where('status', NewsletterSubscriber::STATUS_ACTIVE)])
+                    ->sortable(),
+                TextColumn::make('unsubscribed_subscribers_count')
+                    ->label(__('Afgemeld'))
+                    ->counts(['subscribers as unsubscribed_subscribers_count' => fn ($query) => $query->where('status', NewsletterSubscriber::STATUS_UNSUBSCRIBED)])
                     ->sortable(),
                 TextColumn::make('created_at')->label(__('Aangemaakt'))->dateTime()->sortable(),
             ])
