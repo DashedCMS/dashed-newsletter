@@ -15,12 +15,26 @@ class SendScheduledCampaigns extends Command
 
     protected $description = 'Start campagnes waarvan het ingeplande tijdstip bereikt is';
 
+    /**
+     * Snelle controle voor de scheduler: zonder campagne die aan de beurt is
+     * start er geen eigen artisan-proces. Lukt de query niet, dan draait het
+     * commando gewoon.
+     */
+    public static function hasWork(): bool
+    {
+        return rescue(fn () => self::due()->exists(), true, false);
+    }
+
+    private static function due()
+    {
+        return NewsletterCampaign::where('status', NewsletterCampaign::STATUS_SCHEDULED)
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<=', now());
+    }
+
     public function handle(): int
     {
-        $campaigns = NewsletterCampaign::where('status', NewsletterCampaign::STATUS_SCHEDULED)
-            ->whereNotNull('scheduled_at')
-            ->where('scheduled_at', '<=', now())
-            ->get();
+        $campaigns = self::due()->get();
 
         foreach ($campaigns as $campaign) {
             $problem = CampaignGuard::problem($campaign);

@@ -91,7 +91,8 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
             app(\Illuminate\Console\Scheduling\Schedule::class)
                 ->command('dashed:send-scheduled-campaigns')
                 ->everyMinute()
-                ->withoutOverlapping();
+                ->withoutOverlapping()
+                ->when(fn () => \Dashed\DashedNewsletter\Commands\SendScheduledCampaigns::hasWork());
         });
 
         // Op klassenaam luisteren zodat dit pakket geen harde afhankelijkheid
@@ -113,9 +114,9 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
             }
         });
 
-        cms()->builder('plugins', array_merge(cms()->builder('plugins') ?: [], [
+        cms()->builder('plugins', [
             new DashedNewsletterPlugin(),
-        ]));
+        ]);
 
         // Guard voor het geval dit pakket ooit tegen een oudere dashed-core
         // draait die emailBlock() nog niet kent. Zonder guard crasht de hele
