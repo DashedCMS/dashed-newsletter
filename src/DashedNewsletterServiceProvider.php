@@ -99,6 +99,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
         // op de gebeurtenisklassen krijgt als dashed-core ouder is.
         Event::listen('Dashed\\DashedCore\\Events\\SentEmailBouncedEvent', [SuppressBouncedAddress::class, 'bounced']);
         Event::listen('Dashed\\DashedCore\\Events\\SentEmailComplainedEvent', [SuppressBouncedAddress::class, 'complained']);
+        Event::listen('Dashed\\DashedCore\\Events\\EmailSuppressionReactivated', [\Dashed\DashedNewsletter\Listeners\LiftSuppressionAfterReactivation::class, 'handle']);
 
         // Zelfde vorm, op klassenaam als string: SentEmailDeliveredEvent is
         // nieuw, dus dit pakket kan tegen een oudere dashed-core draaien die
