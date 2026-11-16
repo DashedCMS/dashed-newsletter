@@ -72,5 +72,9 @@ class CampaignCanceller
                 'status' => NewsletterCampaignRecipient::STATUS_INTERRUPTED,
                 'skip_reason' => NewsletterCampaignRecipient::SKIP_CANCELLED,
             ]);
+
+        // Het takenicoon hoort het ook: zonder deze aanroep bleef de taak op
+        // lopend staan, want er komt geen portie meer die hem bijwerkt.
+        CampaignTaskMirror::sync($campaign->fresh() ?? $campaign);
     }
 }

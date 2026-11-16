@@ -36,21 +36,32 @@ class CampaignTaskMirror
 
             $status = match ($campaign->status) {
                 NewsletterCampaign::STATUS_SENT => BackgroundTask::STATUS_COMPLETED,
-                NewsletterCampaign::STATUS_FAILED => BackgroundTask::STATUS_FAILED,
+                // Afgebroken telt als mislukt: anders blijft de taak als lopend
+                // in de topbalk staan tot markStale() hem na twee uur opruimt.
+                NewsletterCampaign::STATUS_FAILED, NewsletterCampaign::STATUS_CANCELLED => BackgroundTask::STATUS_FAILED,
                 default => BackgroundTask::STATUS_RUNNING,
             };
 
-            BackgroundTask::mirror($campaign, [
+            $message = match (true) {
+                $campaign->status === NewsletterCampaign::STATUS_CANCELLED => __('Verzenden afgebroken: :aantal van :totaal ontvangers verwerkt.', ['aantal' => $done, 'totaal' => $total]),
+                $status === BackgroundTask::STATUS_FAILED => $campaign->failure_reason,
+                $status === BackgroundTask::STATUS_COMPLETED => __(':aantal ontvangers verwerkt.', ['aantal' => $total]),
+                default => null,
+            };
+
+            BackgroundTask::mirror($campaign, array_merge([
                 'type' => 'newsletter',
                 'label' => __('Nieuwsbrief versturen: :naam', ['naam' => $campaign->name]),
                 'status' => $status,
                 'done' => $done,
                 'total' => $total,
-                'message' => $status === BackgroundTask::STATUS_FAILED
-                    ? $campaign->failure_reason
-                    : ($status === BackgroundTask::STATUS_COMPLETED ? __(':aantal ontvangers verwerkt.', ['aantal' => $total]) : null),
+                'message' => $message,
                 'notify' => false,
-            ]);
+            ], $status === BackgroundTask::STATUS_RUNNING
+                // Een afgebroken campagne die opnieuw gestart wordt, loopt
+                // weer: dan hoort er geen eindtijd meer op de taak.
+                ? ['finished_at' => null]
+                : []));
         }, report: true);
     }
 }
