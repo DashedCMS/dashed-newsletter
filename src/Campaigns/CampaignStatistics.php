@@ -31,10 +31,23 @@ class CampaignStatistics
     {
         $regels = NewsletterCampaignRecipient::where('newsletter_campaign_id', $this->campaign->id);
 
-        $recipients = (clone $regels)->count();
+        // Afgemelde, geblokkeerde en ongeldige adressen krijgen wel een regel
+        // (zo is na te gaan waarom iemand de mail niet kreeg), maar het zijn
+        // geen ontvangers: de mail was nooit voor hen bedoeld. Wie door het
+        // afbreken van een verzending werd overgeslagen telt wel mee, die
+        // had de mail moeten krijgen.
+        $excluded = (clone $regels)
+            ->where('status', NewsletterCampaignRecipient::STATUS_SKIPPED)
+            ->whereIn('skip_reason', [
+                NewsletterCampaignRecipient::SKIP_UNSUBSCRIBED,
+                NewsletterCampaignRecipient::SKIP_SUPPRESSED,
+                NewsletterCampaignRecipient::SKIP_INVALID_EMAIL,
+            ])
+            ->count();
+        $recipients = (clone $regels)->count() - $excluded;
         $sent = (clone $regels)->where('status', NewsletterCampaignRecipient::STATUS_SENT)->count();
         $failed = (clone $regels)->where('status', NewsletterCampaignRecipient::STATUS_FAILED)->count();
-        $skipped = (clone $regels)->where('status', NewsletterCampaignRecipient::STATUS_SKIPPED)->count();
+        $skipped = (clone $regels)->where('status', NewsletterCampaignRecipient::STATUS_SKIPPED)->count() - $excluded;
         $delivered = (clone $regels)->whereNotNull('delivered_at')->count();
         $bounced = (clone $regels)->whereNotNull('bounced_at')->count();
         $complained = (clone $regels)->whereNotNull('complained_at')->count();
@@ -70,6 +83,7 @@ class CampaignStatistics
             'sent' => $sent,
             'failed' => $failed,
             'skipped' => $skipped,
+            'excluded' => $excluded,
             'delivered' => $delivered,
             'bounced' => $bounced,
             'complained' => $complained,

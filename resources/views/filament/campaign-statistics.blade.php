@@ -23,13 +23,18 @@
     <div>
         <div class="text-sm text-gray-500">Ontvangers</div>
         <div class="text-2xl font-semibold">{{ $cijfers['recipients'] }}</div>
+        @if ($cijfers['excluded'])
+            <div class="text-xs text-gray-500">
+                {{ $cijfers['excluded'] }} afgemeld of geblokkeerd, niet meegeteld
+            </div>
+        @endif
     </div>
     <div>
         <div class="text-sm text-gray-500">Verzonden</div>
         <div class="text-2xl font-semibold">{{ $cijfers['sent'] }}</div>
         @if ($cijfers['failed'] || $cijfers['skipped'])
             <div class="text-xs text-gray-500">
-                {{ $cijfers['failed'] }} mislukt, {{ $cijfers['skipped'] }} overgeslagen
+                {{ $cijfers['failed'] }} mislukt, {{ $cijfers['skipped'] }} afgebroken
             </div>
         @endif
     </div>
