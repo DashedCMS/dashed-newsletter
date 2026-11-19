@@ -53,11 +53,12 @@ class ClickController
         // uit onze eigen tabel, zie de toelichting hierboven.
         $response = redirect()->away($linkRegel->url);
 
-        // Alleen na een geldige handtekening, en alleen als de lijst het
-        // toestaat (VisitorRecognition). Een verminkte link herkent niemand.
-        $subscriber = $regel?->subscriber;
-        if ($subscriber && VisitorRecognition::mayRecognize($subscriber)) {
-            $response->withCookie(VisitorRecognition::cookieFor($subscriber));
+        // Alleen na een geldige handtekening, alleen als de lijst het
+        // toestaat en, met de cookiebanner aan, alleen met
+        // marketingtoestemming (VisitorRecognition). Een verminkte link
+        // herkent niemand.
+        if ($cookie = VisitorRecognition::cookieIfAllowed($regel?->subscriber)) {
+            $response->withCookie($cookie);
         }
 
         return $response;

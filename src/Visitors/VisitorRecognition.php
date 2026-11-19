@@ -28,6 +28,12 @@ use Dashed\DashedNewsletter\Models\NewsletterSuppression;
  * versleutelt EncryptCookies niets. Deze klasse versleutelt de waarde daarom
  * zelf, op precies de manier van EncryptCookies, zodat de web-groep hem op
  * elke gewone pagina gewoon ontsleutelt en `$request->cookie()` het id geeft.
+ *
+ * Met de cookiebanner aan (ConsentGate van dashed-core) alleen met
+ * marketingtoestemming: zonder wordt de cookie niet gezet, en een bestaande
+ * cookie herkent niemand meer zodra marketing is ingetrokken. Het
+ * toestemmingscookie is onversleuteld, dus ook op de klikroute buiten de
+ * web-groep leesbaar.
  */
 class VisitorRecognition
 {
@@ -40,6 +46,31 @@ class VisitorRecognition
         $value = Crypt::encryptString(CookieValuePrefix::create(self::COOKIE, Crypt::getKey()) . $subscriber->getKey());
 
         return cookie(self::COOKIE, $value, self::MINUTES, '/', null, null, true, false, 'lax');
+    }
+
+    /**
+     * Mag er volgens de cookiebanner herkend worden? Zonder banner (of met
+     * een core zonder ConsentGate) ja, zoals voorheen.
+     */
+    public static function consentGiven(): bool
+    {
+        if (! class_exists(\Dashed\DashedCore\Classes\Consent\ConsentGate::class)) {
+            return true;
+        }
+
+        return \Dashed\DashedCore\Classes\Consent\ConsentGate::allows('marketing');
+    }
+
+    /**
+     * De cookie voor deze abonnee, of null als hij niet gezet mag worden.
+     */
+    public static function cookieIfAllowed(?NewsletterSubscriber $subscriber): ?Cookie
+    {
+        if (! $subscriber || ! static::mayRecognize($subscriber) || ! static::consentGiven()) {
+            return null;
+        }
+
+        return static::cookieFor($subscriber);
     }
 
     public static function forgetCookie(): Cookie
@@ -78,7 +109,7 @@ class VisitorRecognition
             return $request->attributes->get($memoKey);
         }
 
-        $id = $request->cookie(self::COOKIE);
+        $id = static::consentGiven() ? $request->cookie(self::COOKIE) : null;
         $subscriber = is_string($id) && ctype_digit($id) ? NewsletterSubscriber::with('list')->find((int) $id) : null;
         $subscriber = static::mayRecognize($subscriber) ? $subscriber : null;
 
