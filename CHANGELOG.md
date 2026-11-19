@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.28.0 - 2026-11-19
+
+### Added
+- AVG-provider (abonnee anonimiseren, blokkadelijst blijft) en een sectie in het klantprofiel.
+
 ## v4.27.0 - 2026-11-19
 
 ### Changed

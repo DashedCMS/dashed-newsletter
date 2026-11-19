@@ -238,5 +238,18 @@
     "Weergave": "Display",
     "Zet een onzichtbaar plaatje in de mail. Let op: Apple Mail haalt dat standaard op zonder dat iemand kijkt, dus openingspercentages vallen structureel te hoog uit.": "Adds an invisible image to the email. Note: Apple Mail fetches it by default without anyone looking, so open rates are structurally too high.",
     "Zet hier het afmeldblok als je de afmeldregel zelf wilt vormgeven. Doe je dat niet, dan komt er automatisch een standaardregel onderaan: zonder afmeldlink mag een nieuwsbrief niet verstuurd worden.": "Place the unsubscribe block here if you want to design the unsubscribe line yourself. If you do not, a default line is added automatically at the bottom: a newsletter may not be sent without an unsubscribe link.",
-    "Zoek en stel voor": "Search and suggest"
+    "Zoek en stel voor": "Search and suggest",
+    "Abonnementen": "Subscriptions",
+    "Het abonnement blijft als lege rij staan zodat de cijfers van verzonden campagnes kloppen. Er wordt nooit meer naar gemaild.": "The subscription stays as an empty row so the figures of sent campaigns remain correct. It will never be emailed again.",
+    "Ontvangen campagnes": "Received campaigns",
+    "Adres en toelichting worden gewist; opens, kliks en bezorging blijven meetellen in de campagnecijfers.": "The address and comments are erased; opens, clicks and delivery still count in the campaign figures.",
+    "Blokkadelijst": "Block list",
+    "Blijft staan, anders kan het adres opnieuw ingeschreven worden en mailen we iemand die bezwaar maakte of wiens adres niet werkt.": "Is kept, otherwise the address could be subscribed again and we would email someone who objected or whose address does not work.",
+    "Extra velden": "Extra fields",
+    "Geschiedenis van het abonnement": "Subscription history",
+    "Vastgelegde toestemmingen": "Recorded consents",
+    "Ingeschreven": "Subscribed",
+    "Actieve inschrijvingen": "Active subscriptions",
+    "Ja, ontvangt niets": "Yes, receives nothing",
+    "Niet ingeschreven voor de nieuwsbrief.": "Not subscribed to the newsletter."
 }

@@ -84,6 +84,9 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        // Sectie op het klantprofiel van ec-core; zonder webshop leest niemand hem.
+        cms()->builder('customerProfileSections', ['newsletter' => \Dashed\DashedNewsletter\CustomerProfile\NewsletterCustomerSection::class]);
+
         // Ingeplande en verzonden campagnes op de campagnekalender van dashed-core.
         \Dashed\DashedNewsletter\Campaigns\CampaignCalendarSource::register();
 
@@ -189,6 +192,12 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
         }
 
         self::registreerBewaartermijnen();
+
+        // AVG-verzoeken (inzage en verwijdering) in dashed-core; een oudere
+        // core kent de registry niet.
+        if (method_exists(cms(), 'registerPersonalDataProvider')) {
+            cms()->registerPersonalDataProvider(\Dashed\DashedNewsletter\PersonalData\NewsletterPersonalDataProvider::class);
+        }
     }
 
     /**

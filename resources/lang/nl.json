@@ -238,5 +238,18 @@
     "Weergave": "Weergave",
     "Zet een onzichtbaar plaatje in de mail. Let op: Apple Mail haalt dat standaard op zonder dat iemand kijkt, dus openingspercentages vallen structureel te hoog uit.": "Zet een onzichtbaar plaatje in de mail. Let op: Apple Mail haalt dat standaard op zonder dat iemand kijkt, dus openingspercentages vallen structureel te hoog uit.",
     "Zet hier het afmeldblok als je de afmeldregel zelf wilt vormgeven. Doe je dat niet, dan komt er automatisch een standaardregel onderaan: zonder afmeldlink mag een nieuwsbrief niet verstuurd worden.": "Zet hier het afmeldblok als je de afmeldregel zelf wilt vormgeven. Doe je dat niet, dan komt er automatisch een standaardregel onderaan: zonder afmeldlink mag een nieuwsbrief niet verstuurd worden.",
-    "Zoek en stel voor": "Zoek en stel voor"
+    "Zoek en stel voor": "Zoek en stel voor",
+    "Abonnementen": "Abonnementen",
+    "Het abonnement blijft als lege rij staan zodat de cijfers van verzonden campagnes kloppen. Er wordt nooit meer naar gemaild.": "Het abonnement blijft als lege rij staan zodat de cijfers van verzonden campagnes kloppen. Er wordt nooit meer naar gemaild.",
+    "Ontvangen campagnes": "Ontvangen campagnes",
+    "Adres en toelichting worden gewist; opens, kliks en bezorging blijven meetellen in de campagnecijfers.": "Adres en toelichting worden gewist; opens, kliks en bezorging blijven meetellen in de campagnecijfers.",
+    "Blokkadelijst": "Blokkadelijst",
+    "Blijft staan, anders kan het adres opnieuw ingeschreven worden en mailen we iemand die bezwaar maakte of wiens adres niet werkt.": "Blijft staan, anders kan het adres opnieuw ingeschreven worden en mailen we iemand die bezwaar maakte of wiens adres niet werkt.",
+    "Extra velden": "Extra velden",
+    "Geschiedenis van het abonnement": "Geschiedenis van het abonnement",
+    "Vastgelegde toestemmingen": "Vastgelegde toestemmingen",
+    "Ingeschreven": "Ingeschreven",
+    "Actieve inschrijvingen": "Actieve inschrijvingen",
+    "Ja, ontvangt niets": "Ja, ontvangt niets",
+    "Niet ingeschreven voor de nieuwsbrief.": "Niet ingeschreven voor de nieuwsbrief."
 }
