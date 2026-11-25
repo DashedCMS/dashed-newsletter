@@ -34,6 +34,11 @@ class UnsubscribeReasonsPage extends Page
 
     protected string $view = 'dashed-newsletter::filament.unsubscribe-reasons-page';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can('view_newsletter') ?? false;
+    }
+
     /** @var string|int|null */
     public $lijstId = null;
 

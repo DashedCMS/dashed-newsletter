@@ -6,6 +6,8 @@ namespace Dashed\DashedNewsletter;
 
 use Dashed\DashedCore\Models\User;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
+use Dashed\DashedNewsletter\Policies\NewsletterPolicy;
 use Spatie\LaravelPackageTools\Package;
 use Dashed\DashedCore\Retention\Termijn;
 use Dashed\DashedCore\Retention\Retention;
@@ -65,6 +67,7 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
                 '2026_08_26_000003_default_newsletter_tracking_to_on',
                 '2026_08_31_000001_repair_newsletter_tracking_default',
                 '2026_10_22_000001_add_recognize_visitors_to_newsletter_lists_table',
+                '2026_11_25_000001_grant_newsletter_permissions_to_existing_roles',
             ])
             ->runsMigrations()
             ->hasConfigFile()
@@ -132,6 +135,24 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
             cms()->emailBlock('web-version', WebVersionBlock::class);
         }
 
+        // Vóór november 2026 had de nieuwsbrief geen eigen rechten en kon elke
+        // beheerder alles. De migratie grant_newsletter_permissions_to_existing_roles
+        // geeft deze drie aan elke bestaande rol, zodat niemand toegang verliest.
+        foreach ([
+            \Dashed\DashedNewsletter\Models\NewsletterList::class,
+            \Dashed\DashedNewsletter\Models\NewsletterSubscriber::class,
+            \Dashed\DashedNewsletter\Models\NewsletterCampaign::class,
+            \Dashed\DashedNewsletter\Models\NewsletterSuppression::class,
+        ] as $model) {
+            Gate::policy($model, NewsletterPolicy::class);
+        }
+
+        cms()->registerRolePermissions('Nieuwsbrief', [
+            'view_newsletter' => __('Nieuwsbrief bekijken'),
+            'edit_newsletter' => __('Nieuwsbrief bewerken en versturen'),
+            'delete_newsletter' => __('Nieuwsbrief verwijderen'),
+        ]);
+
         cms()->registerSettingsPage(
             DashedNewsletterSettingsPage::class,
             'Nieuwsbrief',
@@ -183,12 +204,13 @@ class DashedNewsletterServiceProvider extends PackageServiceProvider
             $mobileApi->registerCapability('newsletter', ['version' => $version]);
 
             $mobileApi->registerAbilities(['newsletter.read', 'newsletter.write']);
-            $mobileApi->registerRoleAbilities([
-                'eigenaar' => ['newsletter.read', 'newsletter.write'],
-                'admin' => ['newsletter.read', 'newsletter.write'],
-                'shopbeheerder' => ['newsletter.read', 'newsletter.write'],
-                'read-only' => ['newsletter.read'],
-            ]);
+            // Dezelfde rechten als in het CMS: zie registerRolePermissions hierboven.
+            if (method_exists($mobileApi, 'registerAbilityPermissions')) {
+                $mobileApi->registerAbilityPermissions([
+                    'newsletter.read' => ['view_newsletter'],
+                    'newsletter.write' => ['edit_newsletter'],
+                ]);
+            }
         }
 
         self::registreerBewaartermijnen();

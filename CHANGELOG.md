@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.29.0 - 2026-11-25
+
+### Changed
+- Nieuwe CMS-rechten `view_newsletter`, `edit_newsletter` en `delete_newsletter` op alle nieuwsbriefschermen; een migratie geeft ze aan elke bestaande rol, zodat niemand toegang verliest. In de app volgen `newsletter.read`/`newsletter.write` nu deze rechten in plaats van de rolnaam (vereist dashed-core ^4.124).
+
 ## v4.28.0 - 2026-11-19
 
 ### Added

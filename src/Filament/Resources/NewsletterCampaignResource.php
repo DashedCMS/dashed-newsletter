@@ -264,6 +264,7 @@ class NewsletterCampaignResource extends Resource
                 // zijn.
                 Action::make('cancel')
                     ->label(__('Afbreken'))
+                    ->authorize('update')
                     ->icon('heroicon-o-stop-circle')
                     ->color('danger')
                     ->visible(fn (NewsletterCampaign $record): bool => $record->status === NewsletterCampaign::STATUS_SENDING)

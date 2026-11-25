@@ -18,6 +18,7 @@ class DuplicateCampaignAction
     public static function make(): Action
     {
         return Action::make('duplicateCampaign')
+            ->authorize('replicate')
             ->label(__('Dupliceren'))
             ->icon('heroicon-o-document-duplicate')
             ->color('gray')
